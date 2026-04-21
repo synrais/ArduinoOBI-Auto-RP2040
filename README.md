@@ -40,6 +40,20 @@ ESP32-C3 pin assignments can be overridden in `platformio.ini` via `ESP_EN_PIN` 
 
 ---
 
+## NeoPixel LED Guide
+
+> Applies to the RP2040 Zero only. Uno and Nano do not have an onboard NeoPixel.
+
+| Colour    | Meaning                                              |
+|-----------|------------------------------------------------------|
+| Off       | No battery / idle between polls                      |
+| 🟢 Green  | Battery model read successfully — scan starting      |
+| 🔵 Blue   | Scan complete, battery unlocked and healthy          |
+| 🟡 Yellow | Battery locked — unlock attempts in progress         |
+| 🔴 Red    | Unlock failed, or failure code 15 (BMS dead)         |
+
+---
+
 ## Prerequisites
 
 - [VS Code](https://code.visualstudio.com/)
@@ -355,20 +369,6 @@ Each attempt shows the three primary checksums so you can see exactly which pass
 ============================================
 ```
 Printed when the presence poll returns no response while in `IDLE` state.
-
----
-
-## NeoPixel LED Guide
-
-> Applies to the RP2040 Zero only. Uno and Nano do not have an onboard NeoPixel.
-
-| Colour    | Meaning                                              |
-|-----------|------------------------------------------------------|
-| Off       | No battery / idle between polls                      |
-| 🟢 Green  | Battery model read successfully — scan starting      |
-| 🔵 Blue   | Scan complete, battery unlocked and healthy          |
-| 🟡 Yellow | Battery locked — unlock attempts in progress         |
-| 🔴 Red    | Unlock failed, or failure code 15 (BMS dead)         |
 
 ---
 
