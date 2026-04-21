@@ -67,7 +67,7 @@ ESP32-C3 pin assignments can be overridden in `platformio.ini` via `ESP_EN_PIN` 
 
 ### Option A — Pre-built UF2 (RP2040 Zero only, quickest)
 
-1. Download the latest `.uf2` file from the Releases page.
+1. Download the `.uf2` file.
 2. Hold the BOOT button on the RP2040 Zero while plugging it in via USB — it mounts as a USB drive.
 3. Drag and drop the `.uf2` file onto the drive. It will reboot and start automatically.
 4. Open any serial terminal at **115200 baud** to see output.
