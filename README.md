@@ -80,38 +80,7 @@ Available on most battery types. This is the BMS's own internal coarse estimate,
 
 ## Example Readout
 
-```
-============================================
-  Makita Monitor - Scanning...
-============================================
---------------------------------------------
-Battery found  : BL1850
---------------------------------------------
-Model          : BL1850
-ROM ID         : 28 4A F1 03 00 00 00 C2
-Capacity       : 5.0 Ah
---------------------------------------------
-Lock status    : UNLOCKED
-Failure code   : 0 - OK
-Checksum 0-15  : OK
-Checksum 16-31 : OK
-Checksum 32-40 : OK
---------------------------------------------
-Cycle count    : 47
-Health         : 3.72 / 4  (###-)
-OD events      : 2
-Temperature    : 24.6 C
---------------------------------------------
-Pack voltage   : 19.843 V
-Cell  1        : 3.969 V
-Cell  2        : 3.971 V
-Cell  3        : 3.967 V
-Cell  4        : 3.970 V
-Cell  5        : 3.966 V
-Cell diff      : 0.005 V
---------------------------------------------
-State of charge: 6 / 7
-```
+![pc exe](Pictures/PC_exe.png)
 
 ---
 
