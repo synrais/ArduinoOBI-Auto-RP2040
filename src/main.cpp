@@ -866,6 +866,7 @@ bool attempt_unlock(BatteryInfo &info, uint8_t *data32) {
         Serial.println("  -> Checksums corrupt. DA 04 cannot fix this.");
         Serial.println("  -> Attempting frame write...");
         led_purple();
+        flash_leds(2);
         if (write_corrected_frame(data32)) {
             parse_basic_info(data32, info);
             Serial.println("  -> Frame write succeeded. UNLOCKED.");
@@ -1000,6 +1001,7 @@ bool run_scan() {
             // Types 0, 2, 3: charger-style unlock is documented and safe.
             Serial.println("Attempting charger-style auto-unlock...");
             led_yellow();
+            flash_leds(2);
 
             bool unlocked = attempt_unlock(info, data32);
 
