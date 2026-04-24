@@ -55,12 +55,6 @@ void power_cycle_bus(uint16_t off_ms = 150, uint16_t on_ms = 200) {
 
 // ─────────────────────────────────────────────
 //  Low-level 1-Wire transactions
-//
-//  Timing notes for RP2040 @ 133 MHz:
-//  - 600 us post-reset settle
-//  - 200 us after ROM command byte
-//  - 150 us inter-byte gap
-//  - 300 us before reading response
 // ─────────────────────────────────────────────
 void cmd_cc(const uint8_t *cmd, uint8_t cmd_len,
             uint8_t *rsp,       uint8_t rsp_len) {
