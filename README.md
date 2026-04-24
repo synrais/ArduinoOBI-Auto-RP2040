@@ -47,6 +47,21 @@ All three trigger a scan automatically on connect and colourise the output (lock
 
 ---
 
+## Supported Battery Types
+
+| Type | Voltages | Temperature | Health | Counters | Charge Level | Unlock |
+|------|----------|-------------|--------|----------|--------------|--------|
+| 0    | ✅       | ✅          | ✅     | ✅       | ✅           | ✅     |
+| 2    | ✅       | ✅          | ✅     | ✅       | ✅           | ✅     |
+| 3    | ✅       | ✅          | ✅     | ✅       | ✅           | ✅     |
+| 5    | ✅       | ✅          | ✅     | —        | —            | —      |
+| 6    | ✅       | ✅          | ✅     | —        | —            | —      |
+| Unknown / Old | ✅ | —        | ✅     | —        | —            | —      |
+
+Types 5 and 6 have their own dedicated voltage and temperature commands and are fully read-out, but have no documented test mode, unlock, or counter commands — so none are attempted. Sending undocumented commands to these types risks corrupting BMS state with no guaranteed recovery path.
+
+---
+
 ## Example Readout
 
 ![pc exe](Pictures/PC_exe.png)
