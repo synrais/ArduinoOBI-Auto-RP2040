@@ -6,6 +6,8 @@ WAIT_BATTERY  ──►  SCAN_NOW  ──►  IDLE
      │                │ scan failed  │ battery removed
      └────────────────┘◄─────────────┘
 ```
+The ENABLE pin switches a transistor or FET that powers the battery's BMS logic rail.  
+Toggling it LOW for ≥ 300 ms fully discharges the BMS capacitors and resets the battery's internal firmware state — this is what a real charger does on insertion.
 
 | State          | What is happening                                                    |
 |----------------|----------------------------------------------------------------------|
@@ -81,12 +83,6 @@ See [Auto-Unlock](#auto-unlock) above for user-facing description. Technically: 
 | 0 – 12    | 4-cell BL14xx  |
 | 13 – 29   | 5-cell BL18xx  |
 | 30+       | 10-cell BL36xx |
-
----
-
-## Why Checksums Fail
-
-The most common cause is the battery being left in test mode by a previous interrupted scan. A correctly timed charger handshake and explicit test-mode exit resolves this. The auto-unlock sequence handles it automatically.
 
 ---
 
