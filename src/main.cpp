@@ -616,14 +616,6 @@ void print_report(const BatteryInfo &info, float v_pack, float *cells, const uin
     }
     Serial.println();
 
-    Serial.print("Frame          : ");
-    for (int i = 0; i < 32; i++) {
-        if (data32[i] < 0x10) Serial.print("0");
-        Serial.print(data32[i], HEX);
-        if (i < 31) Serial.print(" ");
-    }
-    Serial.println();
-
     Serial.print("Detected type  : "); Serial.println(info.type);
 
     Serial.print("Battery type   : ");
@@ -713,6 +705,15 @@ void print_report(const BatteryInfo &info, float v_pack, float *cells, const uin
         print_sep();
         Serial.print("State of charge: "); Serial.print(soc); Serial.println(" / 7");
     }
+
+    print_sep();
+    Serial.print("Frame          : ");
+    for (int i = 0; i < 32; i++) {
+        if (data32[i] < 0x10) Serial.print("0");
+        Serial.print(data32[i], HEX);
+        if (i < 31) Serial.print(" ");
+    }
+    Serial.println();
 }
 
 // ─────────────────────────────────────────────
