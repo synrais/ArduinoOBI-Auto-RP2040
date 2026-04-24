@@ -688,6 +688,9 @@ void print_report(const BatteryInfo &info, float v_pack, float *cells) {
 
 // ─────────────────────────────────────────────
 //  Charger-style unlock with retry
+//  Only valid for battery types 0, 2, and 3.
+//  Types 5, 6, and unknown do not have documented
+//  unlock commands — do not call for those types.
 // ─────────────────────────────────────────────
 static const int MAX_UNLOCK_ATTEMPTS = 5;
 
@@ -722,6 +725,12 @@ bool attempt_unlock(BatteryInfo &info, uint8_t *data32) {
         delay(200 * attempt);
     }
     return false;
+}
+
+// Returns true if this battery type supports the charger-style unlock sequence.
+// Only types 0, 2, and 3 have documented test-mode and reset-error commands.
+bool type_supports_unlock(int batt_type) {
+    return (batt_type == 0 || batt_type == 2 || batt_type == 3);
 }
 
 // ─────────────────────────────────────────────
@@ -822,9 +831,21 @@ bool run_scan() {
         Serial.println(info.failure_code);
 
         if (info.failure_code == 15) {
+            // BMS is considered dead — nothing can recover this.
             Serial.println("CRITICAL: BMS considered dead. Cannot recover.");
             led_red();
+
+        } else if (!type_supports_unlock(info.type)) {
+            // Types 5, 6, and unknown have no documented unlock commands.
+            // Sending type 0/2/3 test-mode commands to these batteries could
+            // corrupt state or cause undefined behaviour — do not attempt.
+            Serial.print("Unlock not supported for battery type ");
+            Serial.print(info.type);
+            Serial.println(". No unlock attempted.");
+            led_red();
+
         } else {
+            // Types 0, 2, 3: charger-style unlock is documented and safe.
             Serial.println("Attempting charger-style auto-unlock...");
             led_yellow();
 
