@@ -131,7 +131,7 @@ If all 5 attempts fail, the LED turns **red**. Failure code 15 (BMS dead) skips 
 
 ## Manual Rescan
 
-Send `s` (or `S`) over the serial monitor at any time to trigger a fresh scan of the currently inserted battery. Handy after a tool draw-down or thermal event to check updated state.
+Hit `Enter` (or send `S`) over the serial monitor at any time to trigger a fresh scan of the currently inserted battery. Handy after a tool draw-down or thermal event to check updated state.
 
 ---
 ---
