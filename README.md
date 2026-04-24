@@ -23,13 +23,14 @@ No configuration. No button presses. Just insert the battery and it runs. Remove
 
 ## Status Light (RP2040 Zero)
 
-| Colour    | Meaning                                              |
-|-----------|------------------------------------------------------|
-| Off       | No battery / idle                                    |
-| 🟢 Green  | Battery detected — scan starting                     |
-| 🔵 Blue   | Scan complete, battery healthy and unlocked          |
-| 🟡 Yellow | Battery locked — unlock attempts in progress         |
-| 🔴 Red    | Unlock failed, or BMS dead (failure code 15)         |
+| Colour      | Meaning                                                        |
+|-------------|----------------------------------------------------------------|
+| Off         | No battery / idle                                              |
+| 🟢 Green    | Battery detected — scan starting                               |
+| 🔵 Blue     | Scan complete, battery healthy and unlocked                    |
+| 🟡 Yellow   | Battery locked — error reset attempts in progress              |
+| 🟣 Purple   | Checksums corrupt — writing corrected frame to BMS             |
+| 🔴 Red      | Unlock failed, or BMS dead (failure code 15)                   |
 
 ---
 
@@ -101,15 +102,15 @@ Available on most battery types. This is the BMS's own internal coarse estimate,
 
 ## Auto-Unlock
 
-If a battery is locked (and not dead), the monitor performs a charger-style unlock sequence automatically:
+If a battery is locked (and not dead), the monitor performs a charger-style unlock sequence automatically. There are two stages:
 
-1. Power-cycles the bus to reset the BMS firmware
-2. Sends the standard error-reset command
-3. Re-checks all three checksums
+### Stage 1 — Error reset (yellow)
+The monitor power-cycles the bus, sends the standard `DA 04` error-reset command, then re-checks all three checksums. This handles the most common lock conditions where the BMS can self-correct in a single pass. If it works, done. If checksums are still bad, move to Stage 2. If the lock persists for a non-checksum reason, the LED turns red — retrying the same command won't help.
 
-It tries up to **5 times**, waiting a little longer between each attempt. You can watch it work in real time — each attempt prints the checksum results so you can see exactly when it clears. A battery that unlocks on attempt 2 is completely normal.
+### Stage 2 — Frame write (purple)
+If checksums remain corrupt after the reset, the BMS cannot self-repair them. The monitor reads the battery's own live data frame, recalculates the correct checksum values from the actual data already stored, and writes the corrected frame back to the BMS. Only the checksum bytes are changed — cycle count, capacity, health history, and all other data are left completely untouched. The result is read back and verified before declaring success. This stage is attempted once. If it fails, the LED turns red.
 
-If all 5 attempts fail, the LED turns **red**. Failure code 15 (BMS dead) skips unlock entirely — those packs cannot be recovered this way.
+Failure code 15 (BMS dead) skips both stages entirely — those packs cannot be recovered this way.
 
 ---
 
