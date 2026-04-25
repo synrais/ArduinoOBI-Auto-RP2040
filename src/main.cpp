@@ -27,6 +27,13 @@ void led_blue()   { led_set(0,   0, 80); }
 void led_red()    { led_set(80,  0,  0); }
 void led_purple() { led_set(80,  0, 80); }
 
+// Triangle-wave white pulse: 0→80→0 over 2 s.
+void led_pulse_white() {
+    unsigned long t = millis() % 2000UL;
+    uint8_t v = (t < 1000) ? (uint8_t)(t * 80 / 1000) : (uint8_t)((2000UL - t) * 80 / 1000);
+    led_set(v, v, v);
+}
+
 // ─────────────────────────────────────────────
 //  Bus enable / disable
 // ─────────────────────────────────────────────
@@ -60,7 +67,6 @@ void cmd_cc(const uint8_t *cmd, uint8_t cmd_len,
             uint8_t *rsp,       uint8_t rsp_len) {
     enable_bus();
     makita.reset();
-    delayMicroseconds(400);
     makita.write(0xCC, 0);
     delayMicroseconds(100);
     for (int i = 0; i < cmd_len; i++) { delayMicroseconds(100); makita.write(cmd[i], 0);    }
@@ -73,7 +79,6 @@ void cmd_33(const uint8_t *cmd, uint8_t cmd_len,
             uint8_t *rsp,       uint8_t rsp_len) {
     enable_bus();
     makita.reset();
-    delayMicroseconds(400);
     makita.write(0x33, 0);
     delayMicroseconds(100);
     for (int i = 0; i < 8;       i++) { delayMicroseconds(100); rsp[i]     = makita.read();  }
@@ -87,7 +92,6 @@ void cmd_33(const uint8_t *cmd, uint8_t cmd_len,
 void cmd_33_raw(const uint8_t *cmd, uint8_t cmd_len,
                 uint8_t *rsp,       uint8_t rsp_len) {
     makita.reset();
-    delayMicroseconds(400);
     makita.write(0x33, 0);
     delayMicroseconds(100);
     for (int i = 0; i < 8;       i++) { delayMicroseconds(100); rsp[i]     = makita.read();  }
@@ -101,7 +105,6 @@ void cmd_33_raw(const uint8_t *cmd, uint8_t cmd_len,
 void cmd_cc_raw(const uint8_t *cmd, uint8_t cmd_len,
                 uint8_t *rsp,       uint8_t rsp_len) {
     makita.reset();
-    delayMicroseconds(400);
     makita.write(0xCC, 0);
     delayMicroseconds(100);
     for (int i = 0; i < cmd_len; i++) { delayMicroseconds(100); makita.write(cmd[i], 0);    }
@@ -1026,6 +1029,7 @@ bool run_scan() {
 enum ScanState { WAIT_BATTERY, SCAN_NOW, IDLE };
 static ScanState     g_state      = WAIT_BATTERY;
 static unsigned long g_lastPollMs = 0;
+static unsigned long g_pulseMs    = 0;
 static const unsigned long POLL_MS = 800UL;  // ms between presence polls
 
 // ─────────────────────────────────────────────
@@ -1082,6 +1086,12 @@ void loop() {
             led_off();
             g_state = WAIT_BATTERY;
         }
+    }
+
+    // ── Idle pulse (white) while waiting for battery ─────────
+    if (g_state == WAIT_BATTERY && now - g_pulseMs >= 20UL) {
+        g_pulseMs = now;
+        led_pulse_white();
     }
 
     // ── Execute scan when triggered ─────────────────────────
