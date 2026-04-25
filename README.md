@@ -22,7 +22,7 @@ Insert any Makita 18 V or 36 V Li-Ion pack and within 2 seconds you get a full r
 
 No configuration. No button presses. Just insert the battery and it runs. Remove it and the device waits for the next one.
 
-> Remember to have the PC/Phone plugged in and ready before plugging in a battery if you want to see the results of the first scan!
+> Remember to have the PC/Phone plugged in and ready before inserting a battery if you want to see the results of the first scan!
 
 ---
 
