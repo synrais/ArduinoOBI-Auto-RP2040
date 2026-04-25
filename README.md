@@ -194,7 +194,9 @@ ESP32-C3 pin assignments can be overridden in `platformio.ini` via `ESP_EN_PIN` 
 3. Drag and drop the `.uf2` file onto the drive. It will reboot and start automatically.
 4. Open any serial terminal at **115200 baud** to see output.
 
-### Option B — Build from source (all boards)
+### Option B — Locate precompiled firmware for your board in the Firmware folder and upload
+
+### Option C — Build from source (all boards)
 
 1. Clone or download this repository and open the folder in VS Code.
 2. PlatformIO will auto-detect the project via `platformio.ini`.
