@@ -19,7 +19,8 @@ Insert any Makita 18 V or 36 V Li-Ion pack and within 2 seconds you get a full r
 - 🔦 **Battery LEDs** — 1 flash on detection, 2 before unlock or repair, 3 if unlocked and good checksums
 - 🛠️ **Auto-unlock** — performs a charger-style unlock sequence automatically on locked packs
 - 🔧 **Frame repair** — recalculates and rewrites corrupt checksums without touching any other battery data
-
+- ☠️ **Auto-lock** — automatically locks battery packs if pins 4-5 are bridged for testing
+  
 No configuration. No button presses. Just insert the battery and it runs. Remove it and the device waits for the next one.
 
 > Remember to have the PC/Phone plugged in and ready before inserting a battery if you want to see the results of the first scan!
