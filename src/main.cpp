@@ -149,7 +149,13 @@ static void led_pulse(Colour c) {
 }
 
 // ─── Mode detection ───────────────────────────────────────────
-static bool lock_pin_read() { return digitalRead(PIN_MODE_IN) == HIGH; }
+static bool lock_pin_read() {
+#if defined(ARDUINO_ARCH_RP2040)
+    return digitalRead(PIN_MODE_IN) == HIGH;
+#else
+    return digitalRead(PIN_MODE_IN) == LOW;
+#endif
+}
 
 // ─── Bus control ─────────────────────────────────────────────
 static void bus_enable(uint16_t ms = BUS_ENABLE_MS) { digitalWrite(PIN_ENABLE, HIGH); delay(ms); }
@@ -239,16 +245,19 @@ static bool flash_battery_leds(uint8_t times, uint16_t on_ms = 150, uint16_t off
         bus_enable(BUS_PRESENCE_MS);
         if (cmd_33_raw(CMD_TESTMODE_ENTER, sizeof(CMD_TESTMODE_ENTER), tm, LED_CMD_RSP_LEN) != BUS_OK ||
             cmd_33_raw(CMD_LEDS_ON,        sizeof(CMD_LEDS_ON),        on, LED_CMD_RSP_LEN) != BUS_OK)
-            { bus_disable(); return false; }
+            { cmd_33_raw(CMD_TESTMODE_EXIT, sizeof(CMD_TESTMODE_EXIT), tm, LED_CMD_RSP_LEN); bus_disable(); return false; }
         if (sync_neo) led_set(neo);
         delay(on_ms);
         if (cmd_33_raw(CMD_TESTMODE_ENTER, sizeof(CMD_TESTMODE_ENTER), tm, LED_CMD_RSP_LEN) != BUS_OK ||
             cmd_33_raw(CMD_LEDS_OFF,       sizeof(CMD_LEDS_OFF),       of, LED_CMD_RSP_LEN) != BUS_OK)
-            { bus_disable(); return false; }
-        if (sync_neo) led_off();
+            { cmd_33_raw(CMD_TESTMODE_EXIT, sizeof(CMD_TESTMODE_EXIT), tm, LED_CMD_RSP_LEN); bus_disable(); return false; }
+        if (sync_neo && i < times - 1) led_off();
         bus_disable();
         if (i < times - 1) delay(off_ms);
     }
+    bus_enable(BUS_PRESENCE_MS);
+    cmd_33_raw(CMD_TESTMODE_EXIT, sizeof(CMD_TESTMODE_EXIT), tm, LED_CMD_RSP_LEN);
+    bus_disable();
     if (!sync_neo) power_cycle_bus();
     return true;
 }
@@ -732,8 +741,8 @@ static void step_read_health(BatteryInfo &info, const uint8_t d[BASIC_INFO_LEN])
 static void step_handle_lock(BatteryInfo &info, uint8_t d[BASIC_INFO_LEN]) {
     if (!info.locked) {
         Serial.println(F("Battery UNLOCKED."));
-        led_flash_green();
-        if (type_supports_unlock(info.type)) power_cycle_bus();
+        if (type_supports_unlock(info.type)) { flash_battery_leds(3, 200, 100, COL_GREEN); led_green(); power_cycle_bus(); }
+        else led_flash_green();
         led_green();
         return;
     }
@@ -746,7 +755,7 @@ static void step_handle_lock(BatteryInfo &info, uint8_t d[BASIC_INFO_LEN]) {
     led_yellow(); flash_battery_leds(2);
     if (attempt_unlock(info, d)) {
         Serial.println(F("Battery successfully unlocked."));
-        led_flash_green(); power_cycle_bus(); led_green();
+        flash_battery_leds(3, 200, 100, COL_GREEN); led_green(); power_cycle_bus();
     } else {
         Serial.println(F("Could not unlock battery."));
         led_flash_red();
@@ -893,8 +902,13 @@ static uint32_t       g_last_mode_poll    = 0;
 void setup() {
     Serial.begin(115200);
     pinMode(PIN_ENABLE, OUTPUT); digitalWrite(PIN_ENABLE, LOW);
+#if defined(ARDUINO_ARCH_RP2040)
     pinMode(PIN_MODE_OUT, OUTPUT); digitalWrite(PIN_MODE_OUT, HIGH);
     pinMode(PIN_MODE_IN, INPUT_PULLDOWN);
+#else
+    pinMode(PIN_MODE_OUT, OUTPUT); digitalWrite(PIN_MODE_OUT, LOW);
+    pinMode(PIN_MODE_IN, INPUT_PULLUP);
+#endif
     g_pixel.begin(); g_pixel.setBrightness(80); led_off();
     delay(500);
 
