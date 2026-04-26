@@ -44,8 +44,8 @@ No configuration. No button presses. Just insert the battery and it runs. Remove
 |-------------|----------------------------------------------------------------|
 | 🔴 Red      | Pulse, No battery / idle                                       |
 | 🔵 Blue     | Battery detected — identifying                                 |
-| 🟣 Purple   | Writing lock frame to BMS                                      |
 | 🟡 Yellow   | Unsupported battery type — skipping                            |
+| 🟣 Purple   | Writing lock frame to BMS                                      |
 | 🟢 Green    | Battery successfully locked                                    |
 | 🔴 Red      | Already locked or lock failed                                  |
 
