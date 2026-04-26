@@ -27,16 +27,27 @@ No configuration. No button presses. Just insert the battery and it runs. Remove
 
 ---
 
-## Status Light (RP2040 Zero)
+# Status Light (RP2040 Zero)
 
+## Scan / Unlock Mode
 | Colour      | Meaning                                                        |
 |-------------|----------------------------------------------------------------|
-| ⚪ White    | No battery / idle                                              |
+| ⚪ White    | Pulse, No battery / idle                                       |
 | 🔵 Blue     | Battery detected — scan starting                               |
 | 🟡 Yellow   | Battery locked — error reset attempts in progress              |
 | 🟣 Purple   | Checksums corrupt — writing corrected frame to BMS             |
 | 🟢 Green    | Scan complete, battery healthy and unlocked                    |
-| 🔴 Red      | Unlock failed, or BMS dead                                     |
+| 🔴 Red      | Unlock failed or BMS dead                                      |
+
+## Lock Mode
+| Colour      | Meaning                                                        |
+|-------------|----------------------------------------------------------------|
+| 🟠 Orange   | Pulse, No battery / idle                                       |
+| 🔵 Blue     | Battery detected — identifying                                 |
+| 🟠 Orange   | Writing lock frame to BMS                                      |
+| 🟡 Yellow   | Unsupported battery type — skipping                            |
+| 🟢 Green    | Battery successfully locked                                    |
+| 🔴 Red      | Already locked or lock failed                                  |
 
 ---
 
