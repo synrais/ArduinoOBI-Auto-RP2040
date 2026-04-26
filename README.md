@@ -1,4 +1,4 @@
-# 🔋 (Automatic) Makita Battery Monitor / Unlocker 
+# 🔋 (Automatic) Makita Battery Monitor / Unlocker
 
 > Plug in a battery. Get instant readouts on voltage, health, temperature, cycle count, lock state, and more.  
 > Locked battery? — no phone or PC required. It unlocks itself automatically.
@@ -93,7 +93,6 @@ Types 5 and 6 have their own dedicated voltage and temperature commands and are 
 ## Example Readout
 
 ![pc exe](Pictures/PC_exe.png)
-![android_apk](Pictures/Android_apk.jpg)
 
 ---
 
