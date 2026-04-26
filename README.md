@@ -75,16 +75,16 @@ All three can trigger a scan, and colourise the output (lock state, health, erro
 
 ---
 
-## Supported Battery Types
+# Supported Battery Types
 
-| Type | Voltages | Temperature | Health | Counters | Charge Level | Unlock |
-|------|----------|-------------|--------|----------|--------------|--------|
-| 0    | ✅       | ✅          | ✅     | ✅       | ✅           | ✅     |
-| 2    | ✅       | ✅          | ✅     | ✅       | ✅           | ✅     |
-| 3    | ✅       | ✅          | ✅     | ✅       | ✅           | ✅     |
-| 5 (F0513 based)   | ✅       | ✅          | ✅     | —        | —            | —      |
-| 6  (10 cell)  | ✅       | ✅          | ✅     | —        | —            | —      |
-| Unknown / Old | ✅ | —        | ✅     | —        | —            | —      |
+| Type | MCU | Voltages | Temperature | Health | Counters | Charge Level | Unlock |
+|------|-----|----------|-------------|--------|----------|--------------|--------|
+| 0 — Standard (newest) | STM32L051 (confirmed) / RAJ240 (inferred) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 2 | Unknown — inferred from BTC04 traces | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| 3 | Unknown — inferred from BTC04 traces | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| 5 — F0513 based | NEC/Renesas F0513 | ✅ | ✅ | ✅ | — | — | — |
+| 6 — 10 cell | Renesas RL78 | ✅ | ✅ | ✅ | — | — | — |
+| Unknown / Old | Freescale MC908JK3E | — | — | ✅ | — | — | — |
 
 Types 5 and 6 have their own dedicated voltage and temperature commands and are fully read-out, but have no documented test mode, unlock, or counter commands — so none are attempted. Sending undocumented commands to these types risks corrupting BMS state with no guaranteed recovery path.
 
