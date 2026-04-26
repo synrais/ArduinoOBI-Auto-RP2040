@@ -5,7 +5,7 @@
 //  Lock mode    : auto hard-lock sentinel for types 0 / 2 / 3
 //
 //  Mode select  : bridge GPIO 4 → GPIO 5
-//                 Bridged  → LOCK mode  (orange pulse)
+//                 Bridged  → LOCK mode  (red pulse)
 //                 Open     → SCAN mode  (white pulse)
 //
 //  Target: Waveshare RP2040 Zero + other boards
@@ -117,7 +117,6 @@ static const Colour COL_YELLOW = { 80, 60,  0 };
 static const Colour COL_BLUE   = {  0,  0, 80 };
 static const Colour COL_RED    = { 80,  0,  0 };
 static const Colour COL_PURPLE = { 80,  0, 80 };
-static const Colour COL_ORANGE = { 80, 30,  0 };
 static const Colour COL_WHITE  = { 80, 80, 80 };
 
 static void led_set(Colour c) {
@@ -130,7 +129,6 @@ static void led_yellow() { led_set(COL_YELLOW); }
 static void led_blue()   { led_set(COL_BLUE);   }
 static void led_red()    { led_set(COL_RED);    }
 static void led_purple() { led_set(COL_PURPLE); }
-static void led_orange() { led_set(COL_ORANGE); }
 
 static void led_flash_red() {
     for (uint8_t i=0;i<3;i++) { led_red(); delay(200); led_off(); delay(100); }
@@ -984,7 +982,7 @@ void loop() {
     // Idle pulse
     if (g_state==WAIT_BATTERY && now-g_last_pulse>=LED_PULSE_INTERVAL_MS) {
         g_last_pulse = now;
-        led_pulse(lock_mode ? COL_ORANGE : COL_WHITE);
+        led_pulse(lock_mode ? COL_RED : COL_WHITE);
     }
 
     // Execute scan or lock
