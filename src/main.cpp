@@ -786,7 +786,7 @@ static bool lock_apply(uint8_t frame[BASIC_INFO_LEN]) {
     for (uint8_t n=40; n<=43; n++) nybble_set(frame,n,LOCK_VAL);
 
     Serial.println(F("  [Lock] Pass 1: writing..."));
-    led_orange();
+    led_purple();
     if (!charger_write_frame(frame)) { power_cycle_bus(); return false; }
     power_cycle_bus();
 
