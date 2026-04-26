@@ -39,7 +39,7 @@ No configuration. No button presses. Just insert the battery and it runs. Remove
 | 🟢 Green    | Scan complete, battery healthy and unlocked                    |
 | 🔴 Red      | Unlock failed or BMS dead                                      |
 
-## Lock Mode
+## Lock Mode (pins 4-5 bridged for testing)
 | Colour      | Meaning                                                        |
 |-------------|----------------------------------------------------------------|
 | 🔴 Red      | Pulse, No battery / idle                                       |
