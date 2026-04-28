@@ -45,13 +45,12 @@ static const uint8_t CMD_LEDS_ON[]         = { 0xDA, 0x31 };
 static const uint8_t CMD_LEDS_OFF[]        = { 0xDA, 0x34 };
 static const uint8_t LED_CMD_RSP_LEN       = 9;
 static const uint8_t CMD_RESET_ERRORS[]    = { 0xDA, 0x04 };
-static const uint8_t CMD_CHARGER_ARM[]     = { 0xF0, 0x00 };
+static const uint8_t CMD_CC_F0[]           = { 0xF0, 0x00 }; // cc f0 00: clears bus state / arms frame write path
 static const uint8_t FRAME_WRITE_OPCODE    = 0x0F;
 static const uint8_t FRAME_WRITE_PAD       = 0x00;
 static const uint8_t CMD_STORE[]           = { 0x55, 0xA5 };
 
 static const float TEMP_INVALID   = -999.0f;
-static const float KELVIN_OFFSET  = 273.15f;
 static const float TEMP6_A        = 9323.0f;
 static const float TEMP6_B        = -40.0f;
 
@@ -161,7 +160,7 @@ static void bus_disable()                            { digitalWrite(PIN_ENABLE, 
 
 static void power_cycle_bus(uint16_t off_ms = POWERCYCLE_OFF_MS, uint16_t on_ms = POWERCYCLE_ON_MS) {
     bus_disable();
-    g_charger_arm_issued = false;
+    g_charger_arm_issued = false;   // clear arm flag so retry scans don't bail early
     delay(off_ms);
     bus_enable(on_ms);
 }
@@ -196,6 +195,7 @@ static BusResult cmd_cc    (const uint8_t *c, uint8_t cl, uint8_t *r, uint8_t rl
 static BusResult cmd_cc_raw(const uint8_t *c, uint8_t cl, uint8_t *r, uint8_t rl) { return ow_transaction(false, 0xCC, c, cl, r, rl); }
 static BusResult cmd_33    (const uint8_t *c, uint8_t cl, uint8_t *r, uint8_t rl) { return ow_transaction(true,  0x33, c, cl, r, rl); }
 static BusResult cmd_33_raw(const uint8_t *c, uint8_t cl, uint8_t *r, uint8_t rl) { return ow_transaction(false, 0x33, c, cl, r, rl); }
+
 
 // ─── Nybble helpers ───────────────────────────────────────────
 static uint8_t nybble_get(const uint8_t *d, uint8_t n) {
@@ -296,14 +296,37 @@ static bool read_model(char out[8]) {
 }
 
 static bool read_model_type5(char out[8]) {
-    static const uint8_t enter[] = { 0x99 };
-    uint8_t ign[1] = {0};
-    if (cmd_cc(enter, sizeof(enter), ign, 0) != BUS_OK) { snprintf(out, 8, "BLxxxx"); return false; }
-    static const uint8_t cmd[] = { 0x31 };
-    uint8_t rsp[2] = {0};
-    if (cmd_cc(cmd, sizeof(cmd), rsp, 2) != BUS_OK) { snprintf(out, 8, "BLxxxx"); return false; }
-    snprintf(out, 8, "BL%02X%02X", rsp[1], rsp[0]);
-    return true;
+    // F0513 secondary-tree read.  Sequence mirrors the original OBI Arduino
+    // case 0x31 exactly: CC 99 enters the secondary address space, then a bare
+    // 0x31 reads the two-byte model code.
+    // Timing test results:
+    //   B (initial enable settle) : 0 ms minimum — bus already live from power cycle
+    //   C (post-0x99 settle)      : 10 ms minimum — 25 ms used for margin
+    digitalWrite(PIN_ENABLE, HIGH);          // no settle needed — bus already stable
+    g_ow.reset();
+    delayMicroseconds(400);
+    g_ow.write(0xCC, 0);
+    delayMicroseconds(90);
+    g_ow.write(0x99, 0);
+    delay(10);                               // 10 ms: soak tested minimum
+    g_ow.reset();
+    delayMicroseconds(400);
+    g_ow.write(0x31, 0);
+    delayMicroseconds(90);
+    // Wire order: first byte on wire → low nybble of model, second → high.
+    // e.g. 0x30 then 0x18 → "BL1830".
+    uint8_t b0 = g_ow.read();   // low byte  (e.g. 0x30)
+    delayMicroseconds(90);
+    uint8_t b1 = g_ow.read();   // high byte (e.g. 0x18)
+    delayMicroseconds(90);
+    digitalWrite(PIN_ENABLE, LOW);
+
+    if ((b0 != 0xFF || b1 != 0xFF) && (b0 != 0x00 || b1 != 0x00)) {
+        snprintf(out, 8, "BL%02X%02X", b1, b0);
+        return true;
+    }
+    snprintf(out, 8, "BL18xx");   // model read failed; use safe placeholder
+    return false;
 }
 
 // ─── Battery type detection ───────────────────────────────────
@@ -365,7 +388,8 @@ static void derive_battery_info(const uint8_t d[BASIC_INFO_LEN], BatteryInfo &in
     info.aux_checksums_ok[1] = (checksum_calc(d, 48, 61) == r.aux_checksum_n[1]);
     bool all_ff = (r.checksum_n[0]==0xF && r.checksum_n[1]==0xF &&
                    r.checksum_n[2]==0xF && r.failure_code==0xF);
-    info.locked = all_ff || !info.checksums_ok[0] || !info.checksums_ok[1] || !info.checksums_ok[2];
+    uint8_t lock_nibble = d[20] & 0x0F;
+    info.locked = all_ff || (lock_nibble != 0);
 }
 
 // ─── Health calculations ──────────────────────────────────────
@@ -452,12 +476,24 @@ static uint32_t read_charge_level() {
 // ─── Temperature ─────────────────────────────────────────────
 static float read_temperature_type56(BatteryType t) {
     if (t == BATT_TYPE_5) {
-        static const uint8_t c[] = {0x52}; uint8_t r[2]={0};
-        return (cmd_cc(c,sizeof(c),r,2)==BUS_OK) ? le16(r)/10.0f - KELVIN_OFFSET : TEMP_INVALID;
+        // CC 52 returns a raw uint16 in centidegrees: raw / 100.0 = °C.
+        // Wire-capture verified: 0x0B9B = 2971 → 29.71 °C.
+        static const uint8_t c[] = {0x52};
+        uint8_t r[2] = {0};
+        if (cmd_cc(c, sizeof(c), r, 2) != BUS_OK) return TEMP_INVALID;
+        uint16_t raw = le16(r);
+        if (raw == 0 || raw == 0xFFFF) return TEMP_INVALID;
+        return raw / 100.0f;
     }
     if (t == BATT_TYPE_6) {
+        // Bare 0xD2 (no Skip-ROM prefix) → 1 byte; t°C = (9323 − 40×raw) / 100
+        bus_enable();
         static const uint8_t c[] = {0xD2}; uint8_t r[1]={0};
-        return (cmd_cc(c,sizeof(c),r,1)==BUS_OK) ? (TEMP6_A + TEMP6_B*r[0])/100.0f : TEMP_INVALID;
+        bool ok = g_ow.reset() != 0;
+        if (ok) { delayMicroseconds(BUS_BYTE_GAP_US); g_ow.write(c[0], 0);
+                  delayMicroseconds(BUS_SETTLE_US); r[0] = g_ow.read(); }
+        bus_disable();
+        return ok ? (TEMP6_A + TEMP6_B*r[0])/100.0f : TEMP_INVALID;
     }
     return TEMP_INVALID;
 }
@@ -474,8 +510,8 @@ static void read_voltages_type023(float *vpack, float cells[10], uint8_t ncells,
         for (uint8_t i = 0; i < min(ncells,(uint8_t)5); i++)
             cells[i] = le16(&r[2+i*2]) / 1000.0f;
         uint16_t rc = le16(&r[14]), rm = le16(&r[16]);
-        *t_cell   = (rc > 1000) ? rc  /10.0f - KELVIN_OFFSET : TEMP_INVALID;
-        *t_mosfet = (rm > 1000) ? rm  /10.0f - KELVIN_OFFSET : TEMP_INVALID;
+        *t_cell   = (rc != 0 && rc != 0xFFFF) ? rc / 100.0f : TEMP_INVALID;
+        *t_mosfet = (rm != 0 && rm != 0xFFFF) ? rm / 100.0f : TEMP_INVALID;
     } else {
         uint8_t s[13]={0};
         if (cmd_cc(short_,sizeof(short_),s,13)!=BUS_OK || s[12]!=TYPE_PROBE_MAGIC) return;
@@ -485,27 +521,87 @@ static void read_voltages_type023(float *vpack, float cells[10], uint8_t ncells,
     }
 }
 
-static void read_voltages_type5(float *vpack, float cells[10], uint8_t ncells) {
-    float pack = 0;
-    bus_enable();
-    for (uint8_t i = 0; i < min(ncells,(uint8_t)5); i++) {
-        if (!g_ow.reset()) continue;
-        delayMicroseconds(BUS_BYTE_GAP_US);
-        g_ow.write((uint8_t)(0x31+i), 0);
-        delayMicroseconds(BUS_SETTLE_US);
-        uint8_t r[2]={0}; r[0]=g_ow.read(); delayMicroseconds(BUS_BYTE_GAP_US); r[1]=g_ow.read();
-        cells[i] = le16(r)/1000.0f;
-        pack += cells[i];
+// f0513_cc — single CC-prefixed 1-Wire transaction for Type 5 (F0513) batteries.
+// Each call is fully self-contained: enable → 420 ms settle → reset → write CC
+// then payload → read response → disable.
+// Soak tested: 420 ms is the true minimum on RP2040 — 400 ms sits right on the
+// edge and produces occasional failures. Do not reduce this delay.
+static void f0513_cc(const uint8_t *data, uint8_t dlen, uint8_t *rsp, uint8_t rlen) {
+    digitalWrite(PIN_ENABLE, HIGH);
+    delay(420);
+    g_ow.reset();
+    delayMicroseconds(400);
+    g_ow.write(0xCC, 0);
+    for (uint8_t i = 0; i < dlen; i++) { delayMicroseconds(90); g_ow.write(data[i], 0); }
+    for (uint8_t i = 0; i < rlen; i++) { delayMicroseconds(90); rsp[i] = g_ow.read(); }
+    digitalWrite(PIN_ENABLE, LOW);
+}
+
+static void read_voltages_type5(float *vpack, float cells[10], uint8_t ncells, float *t_cell) {
+    // F0513 voltage read sequence (confirmed by wire capture):
+    //   2× CC F0 00   — reset BMS register pointer
+    //   CC 31         — throwaway read (first result after clears is unreliable)
+    //   CC 31–CC 35   — real cell voltages (mV, little-endian uint16)
+    //   CC 52         — temperature (centidegrees → raw / 100.0 = °C)
+    // Each command goes through f0513_cc which fully cycles enable, matching
+    // the timing the BMS expects.  Do NOT merge them onto one held bus.
+
+    static const uint8_t clr[]  = { 0xF0, 0x00 };
+    static const uint8_t c31[]  = { 0x31 };
+    static const uint8_t c32[]  = { 0x32 };
+    static const uint8_t c33[]  = { 0x33 };
+    static const uint8_t c34[]  = { 0x34 };
+    static const uint8_t c35[]  = { 0x35 };
+    static const uint8_t c52[]  = { 0x52 };
+
+    uint8_t ign[2] = {0, 0};
+
+    // Reset BMS register pointer (two clears required).
+    f0513_cc(clr, 2, ign, 0);
+    f0513_cc(clr, 2, ign, 0);
+
+    // Throwaway: first CC 31 after the clears always returns stale data.
+    uint8_t throwaway[2] = {0, 0};
+    f0513_cc(c31, 1, throwaway, 2);
+
+    // Real cell reads (capped at 5 for this BMS type).
+    uint8_t n = min(ncells, (uint8_t)5);
+    float   pack = 0.0f;
+    uint8_t r[2];
+    const uint8_t *cmds[5] = { c31, c32, c33, c34, c35 };
+    for (uint8_t i = 0; i < n; i++) {
+        r[0] = r[1] = 0;
+        f0513_cc(cmds[i], 1, r, 2);
+        uint16_t mv = le16(r);
+        if (mv > 0 && mv != 0xFFFF) {
+            cells[i] = mv / 1000.0f;
+            pack += cells[i];
+        }
     }
-    bus_disable();
     *vpack = pack;
+
+    // Temperature: centidegrees, raw / 100.0 = °C.
+    r[0] = r[1] = 0;
+    f0513_cc(c52, 1, r, 2);
+    uint16_t traw = le16(r);
+    if (traw > 0 && traw != 0xFFFF)
+        *t_cell = traw / 100.0f;
 }
 
 static void read_voltages_type6(float *vpack, float cells[10], uint8_t ncells) {
     uint8_t ign[1]={0}, r[20]={0};
     bus_enable();
     { static const uint8_t c[]={0x10,0x21}; cmd_cc_raw(c,sizeof(c),ign,0); delay(10); }
-    { static const uint8_t c[]={0xD4};      cmd_cc_raw(c,sizeof(c),r,20); }
+    // d4 is a BARE command — no 0xCC prefix.
+    if (g_ow.reset()) {
+        delayMicroseconds(BUS_BYTE_GAP_US);
+        g_ow.write(0xD4, 0);
+        delayMicroseconds(BUS_SETTLE_US);
+        for (uint8_t _i = 0; _i < 20; _i++) {
+            r[_i] = g_ow.read();
+            delayMicroseconds(BUS_BYTE_GAP_US);
+        }
+    }
     bus_disable();
     float pack=0;
     for (uint8_t i=0; i<min(ncells,(uint8_t)10); i++) {
@@ -540,7 +636,7 @@ static void print_report(const BatteryInfo &info, float vpack,
         case  0: Serial.println(F("0 - OK")); break;
         case  1: Serial.println(F("1 - Overloaded")); break;
         case  5: Serial.println(F("5 - Warning")); break;
-        case 15: Serial.println(F("15 - Critical fault (hard-locked by charger)")); break;
+        case 15: Serial.println(F("15 - Unknown critical fault (BMS considered dead)")); break;
         default: Serial.println(info.raw.failure_code); break;
     }
     Serial.print(F("Checksum 0-15  : ")); Serial.println(info.checksums_ok[0] ? F("OK") : F("FAIL"));
@@ -610,7 +706,7 @@ static bool charger_write_frame(const uint8_t src[BASIC_INFO_LEN]) {
         return false;
     }
     { uint8_t r[BASIC_INFO_LEN]={0};
-      if (cmd_cc(CMD_CHARGER_ARM,sizeof(CMD_CHARGER_ARM),r,BASIC_INFO_LEN)!=BUS_OK)
+      if (cmd_cc(CMD_CC_F0,sizeof(CMD_CC_F0),r,BASIC_INFO_LEN)!=BUS_OK)
           { Serial.println(F("  Arm: no presence.")); return false; }
       g_charger_arm_issued=true; delay(50); }
 
@@ -712,7 +808,15 @@ static void step_identify(BatteryInfo &info, const uint8_t d[BASIC_INFO_LEN]) {
 static void step_read_voltages(const BatteryInfo &info, float *vp, float cells[10],
                                 float *tc, float *tm) {
     switch (info.type) {
-        case BATT_TYPE_5: read_voltages_type5(vp, cells, info.cell_count); break;
+        case BATT_TYPE_5:
+            // A brief power-cycle before the F0513 secondary reads is required.
+            // The model read leaves the BMS in a partially-used state; cutting
+            // enable resets it cleanly.
+            // Soak tested: 10 ms is sufficient.
+            bus_disable();
+            delay(10);
+            read_voltages_type5(vp, cells, info.cell_count, tc);
+            break;
         case BATT_TYPE_6: read_voltages_type6(vp, cells, info.cell_count); break;
         default:          read_voltages_type023(vp, cells, info.cell_count, tc, tm); break;
     }
@@ -722,7 +826,7 @@ static void step_read_health(BatteryInfo &info, const uint8_t d[BASIC_INFO_LEN])
     info.health.od_count       = 0;
     info.health.overload_count = 0;
     info.health.charge_level   = 0;
- 
+
     if (info.type==BATT_TYPE_5 || info.type==BATT_TYPE_6) {
         info.health.rating = calc_health_type56(info.raw);
     } else if (info.type==BATT_TYPE_0 || info.type==BATT_TYPE_2 || info.type==BATT_TYPE_3) {
@@ -737,6 +841,19 @@ static void step_read_health(BatteryInfo &info, const uint8_t d[BASIC_INFO_LEN])
 
 // ─── Lock/unlock result LED ───────────────────────────────────
 static void step_handle_lock(BatteryInfo &info, uint8_t d[BASIC_INFO_LEN]) {
+    bool cs_bad = !info.checksums_ok[0] || !info.checksums_ok[1] || !info.checksums_ok[2];
+    if (cs_bad) {
+        Serial.println(F("Checksum anomaly detected (separate from lock state):"));
+        if (!info.checksums_ok[0]) Serial.println(F("  Checksum 0-15  : FAIL"));
+        if (!info.checksums_ok[1]) Serial.println(F("  Checksum 16-31 : FAIL"));
+        if (!info.checksums_ok[2]) Serial.println(F("  Checksum 32-40 : FAIL"));
+        if (type_supports_unlock(info.type)) {
+            Serial.println(F("  -> Frame repair will be attempted if battery is locked."));
+        } else {
+            Serial.println(F("  -> Frame repair not supported for this BMS type."));
+        }
+    }
+
     if (!info.locked) {
         Serial.println(F("Battery UNLOCKED."));
         if (type_supports_unlock(info.type)) { flash_battery_leds(3, 200, 100, COL_GREEN); led_green(); power_cycle_bus(); }
@@ -780,6 +897,8 @@ static bool lock_read_frame(uint8_t frame[BASIC_INFO_LEN], uint8_t retries=15) {
     return false;
 }
 
+// lock_apply — write the four lock nybbles (40–43) to 0xF and verify.
+// Reports per-nybble pass/fail so partial locks are visible in the serial log.
 static bool lock_apply(uint8_t frame[BASIC_INFO_LEN]) {
     for (uint8_t n=40; n<=43; n++) nybble_set(frame,n,LOCK_VAL);
 
@@ -790,7 +909,37 @@ static bool lock_apply(uint8_t frame[BASIC_INFO_LEN]) {
 
     uint8_t v[BASIC_INFO_LEN];
     if (!lock_read_frame(v,10)) { Serial.println(F("  [Lock] Pass 1 verify: no response.")); return false; }
-    if (!lock_nybbles_ok(v))    { Serial.println(F("  [Lock] Pass 1 verify: nybbles did not stick.")); return false; }
+
+    // Check each of the four lock nybbles individually and report.
+    bool all_stuck = true;
+    bool any_stuck = false;
+    for (uint8_t n=40; n<=43; n++) {
+        bool stuck = (nybble_get(v,n) == LOCK_VAL);
+        if (stuck) any_stuck = true;
+        else       all_stuck = false;
+    }
+
+    if (!all_stuck) {
+        // Report which nybbles held and which didn't.
+        Serial.println(F("  [Lock] Pass 1 verify: not all lock nybbles held:"));
+        for (uint8_t n=40; n<=43; n++) {
+            uint8_t got = nybble_get(v,n);
+            Serial.print(F("    Nybble "));
+            Serial.print(n);
+            if (got == LOCK_VAL) {
+                Serial.println(F(" : STUCK (0xF) ✓"));
+            } else {
+                Serial.print(F(" : DID NOT STICK — got 0x"));
+                if (got < 0x10) Serial.print('0');
+                Serial.println(got, HEX);
+            }
+        }
+        // Partial lock — some sentinel nybbles held but not all.
+        if (any_stuck) {
+            Serial.println(F("  [Lock] Partial lock: some nybbles stuck. Battery may be partially protected."));
+        }
+        return false;
+    }
 
     power_cycle_bus();
     if (!lock_read_frame(v,10)) { Serial.println(F("  [Lock] Verify: no response.")); return false; }
@@ -800,7 +949,8 @@ static bool lock_apply(uint8_t frame[BASIC_INFO_LEN]) {
 }
 
 static bool run_lock() {
-    exit_testmode(); power_cycle_bus();
+    if (g_in_testmode) exit_testmode();
+    power_cycle_bus();
     led_blue();
     print_sep();
     Serial.println(F("  [Lock] Battery detected — identifying..."));
@@ -839,7 +989,10 @@ static bool run_lock() {
 
 // ─── Main scan ───────────────────────────────────────────────
 static bool run_scan() {
-    exit_testmode(); power_cycle_bus();
+    // Only exit test-mode if we actually entered it; sending D9 FF FF
+    // unconditionally can corrupt Type 5 BMS state.
+    if (g_in_testmode) exit_testmode();
+    power_cycle_bus();
     led_blue();
 
     BatteryInfo info; memset(&info,0,sizeof(info));
@@ -850,7 +1003,9 @@ static bool run_scan() {
     BasicInfoResult br = step_read_basic_info(data32);
     if (br==BASIC_INFO_NO_RESPONSE) {
         Serial.println(F("ERROR: Battery not responding after retries. Aborting."));
-        led_off(); bus_disable(); return false;
+        bus_disable();
+        g_charger_arm_issued = false;
+        return false;
     }
     if (br==BASIC_INFO_PRE_TYPE0) {
         print_sep();
@@ -858,7 +1013,10 @@ static bool run_scan() {
         Serial.println(F("         Freescale MC908JK3E BMS -- no cell protection."));
         Serial.println(F("         DO NOT charge on any charger."));
         print_sep();
-        led_flash_red(); bus_disable(); return true;
+        led_flash_red();
+        bus_disable();
+        g_charger_arm_issued = false;
+        return true;
     }
 
     parse_basic_info(data32,info.raw); derive_battery_info(data32,info);
@@ -869,18 +1027,22 @@ static bool run_scan() {
 
     float vpack=0, cells[10]={0};
     step_read_voltages(info,&vpack,cells,&info.temperature_c,&info.temperature_mosfet_c);
-    if (info.type==BATT_TYPE_5 || info.type==BATT_TYPE_6)
+    if (info.type==BATT_TYPE_6)
         info.temperature_c = read_temperature_type56(info.type);
     step_read_health(info,data32);
 
     if (!battery_present()) {
         Serial.println(F("Battery removed during scan. Aborting."));
-        led_off(); bus_disable(); return false;
+        bus_disable();
+        g_charger_arm_issued = false;
+        return false;
     }
 
     print_sep(); print_report(info,vpack,cells,data32); print_sep();
     step_handle_lock(info,data32);
-    print_sep(); Serial.println(F("Complete.")); bus_disable();
+    print_sep(); Serial.println(F("Complete."));
+    bus_disable();
+    g_charger_arm_issued = false;
     return true;
 }
 
