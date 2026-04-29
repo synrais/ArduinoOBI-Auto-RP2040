@@ -117,15 +117,29 @@ Available on most battery types. This is the BMS's own internal coarse estimate,
 
 ## Auto-Unlock
 
-If a battery is locked (and not dead), the monitor performs a charger-style unlock sequence automatically. There are two stages:
+If a battery is locked (and the failure code is not 15), the monitor performs a charger-style unlock sequence automatically. It alternates between two techniques for up to six attempts total, stopping as soon as a pass declares success.
 
-### Stage 1 — Error reset (yellow)
-The monitor power-cycles the bus, sends the standard `DA 04` error-reset command, then re-checks all three checksums. This handles the most common lock conditions where the BMS can self-correct in a single pass. If it works, done. If checksums are still bad, move to Stage 2. If the lock persists for a non-checksum reason, the LED turns red — retrying the same command won't help.
+### Odd attempts — Error reset (yellow)
+The monitor power-cycles the bus, enters test mode, and sends the standard `DA 04` error-reset command. This tells the BMS to attempt its own self-repair. The bus is then re-read and all three checksums are verified. This handles the most common lock conditions — a single pass is usually enough. If all checksums come back clean the battery is unlocked and the sequence stops.
 
-### Stage 2 — Frame write (purple)
-If checksums remain corrupt after the reset, the BMS cannot self-repair them. The monitor reads the battery's own live data frame, recalculates the correct checksum values from the actual data already stored, and writes the corrected frame back to the BMS. Only the checksum bytes are changed — cycle count, capacity, health history, and all other data are left completely untouched. The result is read back and verified before declaring success. This stage is attempted once. If it fails, the LED turns red.
+### Even attempts — Frame write (purple)
+If checksums are still corrupt after a `DA 04` pass, the BMS cannot repair them itself. The monitor reads the battery's live data frame, recalculates the correct checksum values from the actual data already stored, and writes the corrected frame back to the BMS. Only the checksum nybbles are changed — cycle count, capacity, health history, and all other data are left completely untouched. The written frame is read back immediately and verified before declaring success.
 
-Failure code 15 (BMS dead) skips both stages entirely — those packs cannot be recovered this way.
+The two techniques alternate — reset, frame write, reset, frame write — up to six cycles. In practice almost all batteries unlock on the first or second attempt. If all six attempts are exhausted without success the LED turns red.
+
+Failure code 15 (BMS considered dead) skips the sequence entirely — those packs cannot be recovered this way.
+
+---
+
+## Auto-Lock
+
+Bridging GPIO 4 → GPIO 5 before inserting a battery switches the device into **Lock mode** (idle LED pulses red). This mode is intended for testing — it deliberately forces a battery into a locked state by corrupting its checksum nybbles.
+
+When a battery is detected the device reads the frame and identifies the battery type. Types 5, 6, and unknown are rejected immediately (yellow LED) — only types 0, 2, and 3 are supported. If the battery is already locked, the device reports it and stops.
+
+For an unlockable battery the device enters test mode and writes a modified frame where the three main checksum nybbles are intentionally set to wrong values. This is attempted up to three times, with the offset value incremented each attempt so the written value is different every pass, preventing the BMS from accepting a coincidentally correct value. After each write the frame is read back to confirm the checksums are genuinely bad. A second power-cycle verify follows to confirm the corrupt values survive a full bus reset.
+
+On success the LED flashes green. On failure it flashes red. Remove the GPIO 4–5 bridge to return to scan/unlock mode.
 
 ---
 
