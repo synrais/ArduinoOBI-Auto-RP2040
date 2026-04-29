@@ -117,7 +117,7 @@ Available on most battery types. This is the BMS's own internal coarse estimate,
 
 ## Auto-Unlock
 
-If a battery is locked (and the failure code is not 15), the monitor performs a charger-style unlock sequence automatically. It alternates between two techniques for up to six attempts total, stopping as soon as a pass declares success.
+If a battery is locked, the monitor performs a charger-style unlock sequence automatically. It alternates between two techniques for up to six attempts total, stopping as soon as a pass declares success.
 
 ### Odd attempts — Error reset (yellow)
 The monitor power-cycles the bus, enters test mode, and sends the standard `DA 04` error-reset command. This tells the BMS to attempt its own self-repair. The bus is then re-read and all three checksums are verified. This handles the most common lock conditions — a single pass is usually enough. If all checksums come back clean the battery is unlocked and the sequence stops.
@@ -127,7 +127,7 @@ If checksums are still corrupt after a `DA 04` pass, the BMS cannot repair them 
 
 The two techniques alternate — reset, frame write, reset, frame write — up to six cycles. In practice almost all batteries unlock on the first or second attempt. If all six attempts are exhausted without success the LED turns red.
 
-Failure code 15 (BMS considered dead) skips the sequence entirely — those packs cannot be recovered this way.
+Failure code 15 (BMS considered dead) is reported in the scan output but does **not** skip the unlock sequence — the alternating DA04/frame-write cycle runs regardless. Recovery is unlikely but the attempt is still made.
 
 ---
 
