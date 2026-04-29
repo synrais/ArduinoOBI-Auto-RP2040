@@ -16,7 +16,6 @@ Insert any Makita 18 V or 36 V LXT Li-Ion pack and within 2 seconds you get a fu
 - 🔄 **Cycle count** — how many full charge/discharge cycles the pack has seen
 - 🔒 **Lock status** — LOCKED or UNLOCKED, with the specific failure code
 - 💡 **Status LED** — RP2040 Zero onboard NeoPixel LED shows device state at a glance
-- 🔦 **Battery LEDs** — 1 flash on detection, 2 before unlock or repair, 3 if unlocked and good checksums
 - 🛠️ **Auto-unlock** — performs a charger-style unlock sequence automatically on locked packs
 - 🔧 **Frame repair** — recalculates and rewrites corrupt checksums without touching any other battery data
 - ☠️ **Auto-lock** — automatically locks battery packs if pins 4-5 are bridged for testing
@@ -48,18 +47,6 @@ No configuration. No button presses. Just insert the battery and it runs. Remove
 | 🟣 Purple   | Writing lock frame to BMS                                      |
 | 🟢 Green    | Battery successfully locked                                    |
 | 🔴 Red      | Already locked or lock failed                                  |
-
----
-
-## Battery LED Indicators
-
-The battery's own LED indicators will flash during a scan — you can tell what's happening just by watching the pack itself, no serial monitor needed.
-
-| Flashes | When                                        |
-|---------|---------------------------------------------|
-| 1×      | Battery detected — scan starting            |
-| 2×      | About to attempt unlock or frame repair     |
-| 3×      | Unlocked and good checksums                 |
 
 ---
 
