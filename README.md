@@ -18,7 +18,7 @@ Insert any Makita 18 V or 36 V LXT Li-Ion pack and within 2 seconds you get a fu
 - 💡 **Status LED** — RP2040 Zero onboard NeoPixel LED shows device state at a glance
 - 🛠️ **Auto-unlock** — performs a charger-style unlock sequence automatically on locked packs
 - 🔧 **Frame repair** — recalculates and rewrites corrupt checksums without touching any other battery data
-- ☠️ **Auto-lock** — automatically locks battery packs if pins 4-5 are bridged for testing
+- ☠️ **Auto-lock** — automatically locks battery packs if pins 0-1 or 0-2 are bridged for testing
   
 No configuration. No button presses. Just insert the battery and it runs. Remove it and the device waits for the next one.
 
@@ -38,7 +38,7 @@ No configuration. No button presses. Just insert the battery and it runs. Remove
 | 🟢 Green    | Scan complete, battery healthy and unlocked                    |
 | 🔴 Red      | Unlock failed or BMS dead                                      |
 
-## Lock Mode (pins 4-5 bridged for testing)
+## Lock Mode (pins 0-1 or 0-2 bridged for testing)
 | Colour      | Meaning                                                        |
 |-------------|----------------------------------------------------------------|
 | 🔴 Red      | Pulse, No battery / idle                                       |
@@ -133,13 +133,14 @@ Failure code 15 (BMS considered dead) is reported in the scan output but does **
 
 ## Auto-Lock
 
-Bridging GPIO 4 → GPIO 5 before inserting a battery switches the device into **Lock mode** (idle LED pulses red). This mode is intended for testing — it deliberately forces a battery into a locked state by corrupting its checksum nybbles.
+Two lock modes are available by bridging GPIO 0 to a sense pin before inserting a battery. The idle LED pulses red in both modes. Types 5, 6, and unknown are rejected — only types 0, 2, and 3 are supported.
 
-When a battery is detected the device reads the frame and identifies the battery type. Types 5, 6, and unknown are rejected immediately (yellow LED) — only types 0, 2, and 3 are supported. If the battery is already locked, the device reports it and stops.
+CRC Lock — bridge GPIO 0 → GPIO 2
+Corrupts the three checksum nybbles in the battery frame, forcing the BMS to treat the battery as locked. Attempted up to three times with an incrementing offset each pass. The frame is read back after each write to confirm the corruption stuck.
 
-For an unlockable battery the device enters test mode and writes a modified frame where the three main checksum nybbles are intentionally set to wrong values. This is attempted up to three times, with the offset value incremented each attempt so the written value is different every pass, preventing the BMS from accepting a coincidentally correct value. After each write the frame is read back to confirm the checksums are genuinely bad. A second power-cycle verify follows to confirm the corrupt values survive a full bus reset.
-
-On success the LED flashes green. On failure it flashes red. Remove the GPIO 4–5 bridge to return to scan/unlock mode.
+Dead Lock — bridge GPIO 0 → GPIO 1
+Sets nybble 40 (the failure code field) to 15, flagging the battery as dead while leaving checksums intact. Reads back after each write to confirm the value survived.
+On success the LED flashes green, on failure red. Remove the bridge to return to scan/unlock mode.
 
 ---
 
