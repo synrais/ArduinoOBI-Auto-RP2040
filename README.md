@@ -145,7 +145,7 @@ DEAD, OVERLOADED, WARNING or any non-zero failure code, and/or corrupt checksums
 
 Bridging GPIO0 → GPIO1 switches the device into **Dead Lock mode** (idle LED pulses red). Bridging GPIO0 → GPIO2 switches into **CRC Lock mode** (idle LED pulses red). Both modes are intended for testing — they deliberately force a battery into a locked state.
 
-**Dead Lock** sets failure-code nybble 40 to 15 (FC_DEAD) and recalculates the checksum covering that range so the frame remains internally consistent. The BMS treats FC_DEAD as a dead battery regardless. This is the cleaner lock — all checksums pass, only the failure code is wrong.
+**Dead Lock** sets failure-code nybble 40 to 15 (DEAD) and recalculates the checksum covering that range so the frame remains internally consistent. This is the cleaner lock — all checksums pass.
 
 **CRC Lock** corrupts the checksum nybbles directly, leaving the frame in an inconsistent state. The BMS rejects the frame because the checksums don't match the data.
 
