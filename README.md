@@ -184,7 +184,7 @@ This is the standard 1-Wire pull-up value — lower values overdrive the bus and
 **Pull-up voltage depends on your board:**
 
 - **Arduino Uno / Nano** — pull up to **5 V**. The ATmega328P runs at 5 V and its logic HIGH threshold (~3.0 V) leaves almost no margin when pulling up to 3.3 V, causing unreliable reads. The battery's BMS data pin can tolerate 5 V in practice.
-- **ESP32-C3 / RP2040 Zero** — pull up to **3.3 V only**. These are 3.3 V-native devices and 5 V on a GPIO will damage them. Connect the Bus enable and 1-Wire data to your chip via 1k resistors to mitigate risk of a pin getting stuck high or low or blowing (It helps alot!). Make sure they are between the pullups and the battery.
+- **ESP32-C3 / RP2040 Zero** — pull up 4.7 kΩ to **3.3 V only**. These are 3.3 V-native devices and 5 V on a GPIO will damage them. Also as precaution Connect the Bus enable and 1-Wire of your battery to your chip via 1k resistors to mitigate risk of a pin getting stuck high or low or blowing (It helps alot!). Make sure they are directly connected to the gpio pins and your battery Bus enable and 1-Wire pins!
 
 > **Optional** — A 1 kΩ load resistor may be required across the battery's main power terminals (B+ to B−), as some batteries enter a deep sleep state and will not respond on the 1-Wire bus until they detect current draw on the power terminals — toggling ENABLE alone is not sufficient to wake them. A 1 kΩ resistor draws enough current to reliably trigger BMS wake-up while remaining cool enough for a standard ¼ W or ½ W resistor. Values above ~1.5 kΩ have been found insufficient to wake some batteries. Plugging into a Makita charger or 2 pin device will also wake a battery from this state.
 
