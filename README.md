@@ -18,7 +18,7 @@ Insert any Makita 18 V or 36 V LXT Li-Ion pack and within 2 seconds you get a fu
 - 💡 **Status LED** — RP2040 Zero onboard NeoPixel LED shows device state at a glance
 - 🛠️ **Auto-unlock** — performs a charger-style unlock sequence automatically on locked packs
 - 🔧 **Frame repair** — recalculates and rewrites corrupt checksums without touching any other battery data
-- ☠️ **Dead lock** — sets failure code 15 with correct checksums if GPIO0→GPIO1 bridged -Recoverable
+- ☠️ **Dead lock** — sets failure code 15 with correct checksums if GPIO0→GPIO1 bridged - Recoverable
 - 🔐 **CRC lock** — corrupts checksums if GPIO0→GPIO2 bridged - Recoverable
   
 No configuration. No button presses. Just insert the battery and it runs. Remove it and the device waits for the next one.
