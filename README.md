@@ -25,6 +25,14 @@ No configuration. No button presses. Just insert the battery and it runs. Remove
 
 > Remember to have the PC/Phone plugged in and ready before inserting a battery if you want to see the results of the first scan!
 
+## What It Does Not Do
+
+- 🔥 **Fix blown fuses** — this tool cannot repair physical fuses inside the pack. After unlocking, verify your battery can actually output power. If not, open the pack and check the fuse — replace it if blown.
+
+- 🔩 **Fix broken balancing tabs** — balancing tabs are the small metal strips connecting the PCB to each cell group. They commonly break from dropping the battery, mostly in 5Ah and 6Ah variants. Lift the PCB at each tab to verify it is solidly connected, if not repair with some thick wire or solderbraid.
+
+  A broken balancer tab typically shows a normal overall pack voltage, but one cell will read very low while an adjacent cell reads very high. This imbalance can force-blow the internal fuse via the heater circuit — the BMS sees simultaneous Overload and Overdischarge and triggers the thermal fuse as a last resort.
+
 ---
 
 # Status Light (RP2040 Zero)
