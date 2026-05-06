@@ -17,7 +17,7 @@ Insert any Makita 18v or 36v LXT Li-Ion pack and within 2 seconds you get a full
 - 🔒 **Lock status** — LOCKED or UNLOCKED, with the specific failure codes at fault listed
 - 💡 **Status LED** — RP2040 Zero onboard NeoPixel LED shows device state at a glance
 - 🛠️ **Auto-unlock** — performs a charger-style unlock sequence automatically on locked packs
-- 🔧 **Frame repair** — comprehensively repairs all known corrupt fields whilst preserving all salvageable battery data
+- 🔧 **Frame repair** — comprehensively repairs all known corrupt frame fields whilst preserving all salvageable battery data
 - 🔐 **Omega lock** — sets the original Makita charger lock nibble (nybble 34) non-zero if GPIO0→GPIO1 bridged — Recoverable
   
 No configuration. No button presses. Just insert the battery and it runs. Remove it and the device waits for the next one.
