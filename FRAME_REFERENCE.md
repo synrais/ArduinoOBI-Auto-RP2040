@@ -86,7 +86,6 @@ Byte 19 is the OBI tool "Status code" field (displayed as hex without `0x` prefi
 **Important findings:**
 - Status code is **fixed at manufacture** for healthy batteries — does not change with cycle count, OD events, or charge level
 - `A5` appears on batteries with physically dead cells regardless of variant — likely a fault code, not a variant identifier
-- Our bad BL1860B showed `6E` — this was corruption from our own testing, not a legitimate value. We corrected it to `67`.
 - The doc says bytes 38-39 "must not be zero" — consistent with this being a fixed identifier
 
 ---
