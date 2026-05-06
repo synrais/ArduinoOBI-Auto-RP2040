@@ -18,7 +18,7 @@ Insert any Makita 18v or 36v LXT Li-Ion pack and within 2 seconds you get a full
 - 💡 **Status LED** — RP2040 Zero onboard NeoPixel LED shows device state at a glance
 - 🛠️ **Auto-unlock** — performs a charger-style unlock sequence automatically on locked packs
 - 🔧 **Frame repair** — comprehensively repairs all known corrupt frame fields whilst preserving all salvageable battery data
-- 🔐 **Omega lock** — sets the original Makita charger lock nibble (nybble 34) non-zero if GPIO0→GPIO1 bridged — Recoverable
+- 🔐 **Omega lock** — sets the original Makita charger lock nybble (nybble 34) non-zero if GPIO0→GPIO1 bridged — Recoverable
   
 No configuration. No button presses. Just insert the battery and it runs. Remove it and the device waits for the next one.
 
@@ -142,7 +142,7 @@ The monitor power-cycles the bus, enters test mode, and sends the standard `DA 0
 ### Step 2 — Comprehensive frame repair (purple)
 If the battery is still locked after DA04, the monitor performs a full frame repair. This goes well beyond checksum correction — it fixes every known lock cause in a single write:
 
-- **Nybble 34** — charger lock nibble restored to 0
+- **Nybble 34** — charger lock nybble restored to 0
 - **Failure code** — nybble 40 cleared to 0
 - **Universal constants** — all known fixed-value bytes restored if corrupt
 - **Byte 1** — variant identifier restored if invalid
@@ -153,13 +153,13 @@ All battery-specific data is preserved — cycle count, OD counter, overload cou
 
 Frame repair is attempted up to six times. In practice almost all batteries unlock on the first or second attempt. If all attempts are exhausted without success the LED turns red.
 
-DEAD, OVERLOADED, WARNING or any non-zero failure code, corrupt checksums, invalid variant bytes, non-zero charger lock nibble, or zero status/constant bytes all contribute to the locked state and proceed into the unlock sequence.
+DEAD, OVERLOADED, WARNING or any non-zero failure code, corrupt checksums, invalid variant bytes, non-zero charger lock nybble, or zero status/constant bytes all contribute to the locked state and proceed into the unlock sequence.
 
 ---
 
 ## Lock Mode
 
-Bridging GPIO0 → GPIO1 switches the device into **Omega Lock mode** (idle LED pulses red). This mode sets the original Makita charger lock nibble — nybble 34 — to a non-zero value. The charger checks this nibble before allowing charging to begin, a mechanism present in every Makita LXT battery from the earliest protocol through to current production.
+Bridging GPIO0 → GPIO1 switches the device into **Omega Lock mode** (idle LED pulses red). This mode sets the original Makita charger lock nybble — nybble 34 — to a non-zero value. The charger checks this nybble before allowing charging to begin, a mechanism present in every Makita LXT battery from the earliest protocol through to current production.
 
 The frame remains internally consistent — all checksums are valid, no failure codes are set. The battery will report UNLOCKED to software that only checks checksums and failure codes, but the charger rejects it. DA04 (error reset) will fix this on older batteries, newer batteries the BMS may see this old fault flag and set the new fault flag nybble 40 to 3 corrupting checksums, both of which are recoverably only using this project.
 
