@@ -1507,7 +1507,6 @@ void loop() {
     }
 
     // LED pulse — driven by Core 1 via g_pulse_active flag.
-    // Just update which colour/mode to use.
     if (g_state == WAIT_BATTERY) {
         g_pulse_scan_mode = (cur_mode == MODE_SCAN);
         g_pulse_active    = true;
