@@ -16,7 +16,7 @@ It is written back using a specific write sequence that requires entering test m
 The frame is **nybble-oriented** — a nybble is 4 bits (half a byte).
 
 ```
-Byte 0  = nybble 0 (low nibble, bits 0-3) + nybble 1 (high nibble, bits 4-7)
+Byte 0  = nybble 0 (low nybble, bits 0-3) + nybble 1 (high nybble, bits 4-7)
 Byte 1  = nybble 2 (low) + nybble 3 (high)
 ...
 Byte 31 = nybble 62 (low) + nybble 63 (high)
@@ -153,10 +153,10 @@ Byte  Nybbles   Field
                 BL1815N ≈ 15, BL1830B ≈ 28-30, BL1840B ≈ 36-40
                 BL1850B ≈ 50-52, BL1860B = 60
 
- 17   34–35     THE ORIGINAL MAKITA CHARGER LOCK NIBBLE
+ 17   34–35     THE ORIGINAL MAKITA CHARGER LOCK NYBBLE
                 Byte 17 = 0xD0 — confirmed constant across all batteries tested.
-                Nybble 34 = 0  (low nibble) — present in ALL Makita LXT batteries
-                Nybble 35 = D  (high nibble) — unknown purpose
+                Nybble 34 = 0  (low nybble) — present in ALL Makita LXT batteries
+                Nybble 35 = D  (high nybble) — unknown purpose
                 Any non-zero nybble 34 stops the battery from charging.
                 Per Jansson: the original lock mechanism from the earliest protocol,
                 carried forward in every subsequent battery for charger compatibility.
@@ -266,9 +266,9 @@ AUX checksum mismatch (nybbles 62-63) does NOT stop charging.
 - Byte 22 flags set — accepted
 - Unknown constants zeroed — accepted
 
-Per Jansson: *"The earliest batteries were locked by the charger setting a certain nibble  
+Per Jansson: *"The earliest batteries were locked by the charger setting a certain nybble  
 to a non-zero value. This is still present in all newer batteries so the charger remains  
-compatible."* That nibble is **nybble 34**.
+compatible."* That nybble is **nybble 34**.
 
 ---
 
@@ -495,7 +495,7 @@ F1 26 BD 13 14 58 00 00 94 94 40
 
 ```
 1. Read current frame
-2. Set byte 17 = 0xD0  (nybble 34 = 0 — charger lock nibble)
+2. Set byte 17 = 0xD0  (nybble 34 = 0 — charger lock nybble)
 3. Set nybble 40 = 0   (failure code OK)
 4. Preserve byte 1 from existing frame (0x26 China / 0x36 Vietnam)
 5. Recalculate all 5 checksums
