@@ -14,7 +14,7 @@ Insert any Makita 18v or 36v LXT Li-Ion pack and within 2 seconds you get a full
 - 🌡️ **Temperature** — live BMS Cell and Mosfet readings in °C
 - 🔋 **Health** — degradation score from 0–4 with a visual bar (`####`, `###-`, etc.)
 - 🔄 **Cycle count** — how many full charge/discharge cycles the pack has seen
-- 🔒 **Lock status** — LOCKED or UNLOCKED, with the specific failure code
+- 🔒 **Lock status** — LOCKED or UNLOCKED, with the specific failure codes at fault listed
 - 💡 **Status LED** — RP2040 Zero onboard NeoPixel LED shows device state at a glance
 - 🛠️ **Auto-unlock** — performs a charger-style unlock sequence automatically on locked packs
 - 🔧 **Frame repair** — comprehensively repairs all known corrupt fields whilst preserving all salvageable battery data
