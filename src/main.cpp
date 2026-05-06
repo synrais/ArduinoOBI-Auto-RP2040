@@ -852,7 +852,7 @@ static void print_report(const BatteryInfo &info, const VoltageReadResult &vr,
     print_sep();
     Serial.print(F("Lock status    : ")); Serial.println(info.locked ? F("LOCKED") : F("UNLOCKED"));
     Serial.print(F("Cell failure   : ")); Serial.println(info.raw.cell_failure ? F("YES") : F("No"));
-    Serial.print(F("Nybble 40 fault: ")); print_failure_code(info.raw.failure_code);
+    Serial.print(F("Nybble 40 code : ")); print_failure_code(info.raw.failure_code);
     Serial.print(F("Checksum 0-15  : ")); Serial.println(info.checksums_ok[0] ? F("OK") : F("BAD"));
     Serial.print(F("Checksum 16-31 : ")); Serial.println(info.checksums_ok[1] ? F("OK") : F("BAD"));
     Serial.print(F("Checksum 32-40 : ")); Serial.println(info.checksums_ok[2] ? F("OK") : F("BAD"));
