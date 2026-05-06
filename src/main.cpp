@@ -125,7 +125,6 @@ static constexpr uint16_t LF_FC   = 0x0001;  // nybble 40 (failure code) != 0
 static constexpr uint16_t LF_CS0  = 0x0002;  // CS0 mismatch (nybbles 0-15)
 static constexpr uint16_t LF_CS1  = 0x0004;  // CS1 mismatch (nybbles 16-31)
 static constexpr uint16_t LF_CS2  = 0x0008;  // CS2 mismatch (nybbles 32-40)
-static constexpr uint16_t LF_B0   = 0x0010;  // byte 0 == 0x00 (must not be zero)
 static constexpr uint16_t LF_B1   = 0x0020;  // byte 1 invalid (not 0x26, 0x36, or 0x31)
 static constexpr uint16_t LF_N34  = 0x0040;  // nybble 34 != 0 (charger lock nybble)
 static constexpr uint16_t LF_B18  = 0x0080;  // byte 18 == 0x00 (must not be zero)
@@ -423,16 +422,12 @@ static void print_lock_causes(const BatteryInfo &info, const uint8_t d[BASIC_INF
     if (info.lock_causes & LF_CS0) Serial.println(F("  CS0              (mismatch nybbles 0-15)"));
     if (info.lock_causes & LF_CS1) Serial.println(F("  CS1              (mismatch nybbles 16-31)"));
     if (info.lock_causes & LF_CS2) Serial.println(F("  CS2              (mismatch nybbles 32-40)"));
-    if (info.lock_causes & LF_B0) {
-        snprintf(buf, sizeof(buf), "  Byte 0 = 0x%02X    (invalid BMS family)", d[0]);
-        Serial.println(buf);
-    }
     if (info.lock_causes & LF_B1) {
         snprintf(buf, sizeof(buf), "  Byte 1 = 0x%02X    (invalid variant)", d[1]);
         Serial.println(buf);
     }
     if (info.lock_causes & LF_N34) {
-        snprintf(buf, sizeof(buf), "  Nybble 34 = %u     (must be 0)", nybble_get(d, 34));
+        snprintf(buf, sizeof(buf), "  Byte 17 = 0x%02X   (must be 0xD0)", d[17]);
         Serial.println(buf);
     }
     if (info.lock_causes & LF_B18) Serial.println(F("  Byte 18 = 0x00   (must not be zero)"));
@@ -641,7 +636,6 @@ static void derive_battery_info(const uint8_t d[BASIC_INFO_LEN], BatteryInfo &in
     if (!info.checksums_ok[0])                                        info.lock_causes |= LF_CS0;
     if (!info.checksums_ok[1])                                        info.lock_causes |= LF_CS1;
     if (!info.checksums_ok[2])                                        info.lock_causes |= LF_CS2;
-    if (d[0] == 0x00)                                                  info.lock_causes |= LF_B0;
     if (d[1] != 0x26 && d[1] != 0x36 && d[1] != 0x31)               info.lock_causes |= LF_B1;
     if (nybble_get(d, 34) != 0)                                       info.lock_causes |= LF_N34;
     if (d[18] == 0x00)                                                info.lock_causes |= LF_B18;
@@ -858,24 +852,24 @@ static void print_report(const BatteryInfo &info, const VoltageReadResult &vr,
     print_sep();
     Serial.print(F("Lock status    : ")); Serial.println(info.locked ? F("LOCKED") : F("UNLOCKED"));
     Serial.print(F("Cell failure   : ")); Serial.println(info.raw.cell_failure ? F("YES") : F("No"));
-    Serial.print(F("Failure code   : ")); print_failure_code(info.raw.failure_code);
+    Serial.print(F("Nybble 40 fault: ")); print_failure_code(info.raw.failure_code);
     Serial.print(F("Checksum 0-15  : ")); Serial.println(info.checksums_ok[0] ? F("OK") : F("BAD"));
     Serial.print(F("Checksum 16-31 : ")); Serial.println(info.checksums_ok[1] ? F("OK") : F("BAD"));
     Serial.print(F("Checksum 32-40 : ")); Serial.println(info.checksums_ok[2] ? F("OK") : F("BAD"));
     Serial.print(F("Aux CSum 44-47 : ")); Serial.println(info.aux_checksums_ok[0] ? F("OK") : F("BAD"));
     Serial.print(F("Aux CSum 48-61 : ")); Serial.println(info.aux_checksums_ok[1] ? F("OK") : F("BAD"));
-    { char buf[48];
-      if (d[0] != 0x00) Serial.println(F("Byte 0         : OK"));
-      else Serial.println(F("Byte 0         : BAD (0x00, must not be zero)"));
-      if (d[1]==0x26||d[1]==0x36||d[1]==0x31) Serial.println(F("Byte 1         : OK"));
-      else { snprintf(buf,sizeof(buf),"Byte 1         : BAD (0x%02X, must be 0x26/0x36/0x31)",d[1]); Serial.println(buf); }
+    { char buf[64];
+      if (d[1]==0x26) Serial.println(F("Byte 1  origin : OK (China/Murata)"));
+	  else if (d[1]==0x36) Serial.println(F("Byte 1  origin : OK (Vietnam/Samsung)"));
+	  else if (d[1]!=0x00) { snprintf(buf,sizeof(buf),"Byte 1  origin : OK - Unknown (0x%02X)",d[1]); Serial.println(buf); }
+      else { snprintf(buf,sizeof(buf),"Byte 1  origin : BAD (0x%02X, must be 0x26/0x36/0x31)",d[1]); Serial.println(buf); }
       uint8_t n34=nybble_get(d,34);
-      if (n34==0) Serial.println(F("Nybble 34      : OK"));
-      else { snprintf(buf,sizeof(buf),"Nybble 34      : BAD (0x%X, must be 0)",n34); Serial.println(buf); }
-      if (d[18]!=0x00) Serial.println(F("Byte 18        : OK"));
-      else Serial.println(F("Byte 18        : BAD (0x00, must not be 0)"));
-      if (d[19]!=0x00) Serial.println(F("Byte 19        : OK"));
-      else Serial.println(F("Byte 19        : BAD (0x00, must not be 0)")); }
+      if (n34==0) Serial.println(F("Byte 17 lockbit: OK"));
+      else { snprintf(buf,sizeof(buf),"Byte 17 lockbit: BAD (0x%02X, low nybble must be 0)",d[17]); Serial.println(buf); }
+      if (d[18]!=0x00) Serial.println(F("Byte 18 ???    : OK"));
+      else Serial.println(F("Byte 18 ???    : BAD (0x00, must not be 0)"));
+      if (d[19]!=0x00) { snprintf(buf,sizeof(buf),"Byte 19 status : OK (%02X)",d[19]); Serial.println(buf); }
+      else Serial.println(F("Byte 19 status : BAD (0x00, must not be 0)")); }
     if (info.locked) print_lock_causes(info, d);
 
     print_sep();
@@ -890,13 +884,13 @@ static void print_report(const BatteryInfo &info, const VoltageReadResult &vr,
     }
     if (is_type_023(info.type)) {
         if (info.health.od_count > 0) {
-            Serial.print(F("OD events      : ")); Serial.println(info.health.od_count);
+            Serial.print(F("OD #           : ")); Serial.println(info.health.od_count);
             if (info.raw.cycles > 0) {
                 Serial.print(F("OD %           : ")); Serial.print(4.0f+100.0f*info.health.od_count/info.raw.cycles,1); Serial.println(F(" %"));
             }
         }
         if (info.health.overload_count > 0) {
-            Serial.print(F("Overload cnt   : ")); Serial.println(info.health.overload_count);
+            Serial.print(F("Overload #     : ")); Serial.println(info.health.overload_count);
             if (info.raw.cycles > 0) {
                 Serial.print(F("Overload %     : ")); Serial.print(4.0f+100.0f*info.health.overload_count/info.raw.cycles,1); Serial.println(F(" %"));
             }
@@ -929,7 +923,7 @@ static void print_report(const BatteryInfo &info, const VoltageReadResult &vr,
             if (vr.cells.v[i]>vmax) vmax=vr.cells.v[i];
             if (vr.cells.v[i]<vmin) vmin=vr.cells.v[i];
         }
-        Serial.print(F("Cell diff      : ")); Serial.println(vmax-vmin,3);
+        Serial.print(F("Cell imbalance : ")); Serial.println(vmax-vmin,3);
     }
 
     if (is_type_023(info.type) && info.health.charge_level > 0 && info.raw.capacity > 0) {
@@ -1025,51 +1019,33 @@ static void send_da04() {
 
 // Comprehensive frame repair. Fixes all known lock causes while preserving
 // all salvageable battery-specific data (history, variant identity, capacity).
-// New family (0xF1): full repair of all known fields.
-// Old family (0x50): minimal repair — nybble 34 and failure code only.
 static bool repair_frame(uint8_t data32[BASIC_INFO_LEN]) {
     uint8_t frame[BASIC_INFO_LEN];
     memcpy(frame, data32, BASIC_INFO_LEN);
 
-    if (data32[0] == 0x50) {
-        // ── Old family: minimal safe repair ───────────────────
-        // Only touch the charger lock nybble and failure code.
-        // Preserve all other bytes — old family frame layout is different.
-        uint8_t b17 = frame[17];
-        b17 = (b17 & 0xF0);            // zero nybble 34 (low), preserve nybble 35 (high)
-        frame[17] = b17;
-        nybble_set(frame, 40, 0);
-        nybble_set(frame, 41, checksum_calc(frame,  0, 15));
-        nybble_set(frame, 42, checksum_calc(frame, 16, 31));
-        nybble_set(frame, 43, checksum_calc(frame, 32, 40));
-        nybble_set(frame, 62, checksum_calc(frame, 44, 47));
-        nybble_set(frame, 63, checksum_calc(frame, 48, 61));
-    } else if (data32[0] == 0xF1) {
-        // ── New family: full repair ────────────────────────────
-        if (frame[0] == 0x00) frame[0] = 0xF1;
-        frame[5]  = 0x58;
-        frame[6]  = 0x00;
-        frame[7]  = 0x00;
-        frame[10] = 0x40;
-        frame[11] = 0x21;
-        frame[13] = 0x80;
-        frame[14] = 0x02;
-        frame[22] = 0x00;
-        frame[17] = 0xD0;
-        if (frame[18] == 0x00) frame[18] = 0x8E;
-        if (frame[1] != 0x26 && frame[1] != 0x36)
-            frame[1] = infer_byte1(data32);
-        bool b19_corrupt = (frame[19] == 0x00)
-                        || (frame[19] == 0xA5 && (frame[22] & 0x04) == 0);
-        if (b19_corrupt)
-            frame[19] = derive_status_code(frame[1], data32[16]);
-        nybble_set(frame, 40, 0);
-        nybble_set(frame, 41, checksum_calc(frame,  0, 15));
-        nybble_set(frame, 42, checksum_calc(frame, 16, 31));
-        nybble_set(frame, 43, checksum_calc(frame, 32, 40));
-        nybble_set(frame, 62, checksum_calc(frame, 44, 47));
-        nybble_set(frame, 63, checksum_calc(frame, 48, 61));
-    }
+    if (frame[0] == 0x00) frame[0] = 0xF1;
+    frame[5]  = 0x58;
+    frame[6]  = 0x00;
+    frame[7]  = 0x00;
+    frame[10] = 0x40;
+    frame[11] = 0x21;
+    frame[13] = 0x80;
+    frame[14] = 0x02;
+    frame[22] = 0x00;
+    frame[17] = 0xD0;
+    if (frame[18] == 0x00) frame[18] = 0x8E;
+    if (frame[1] != 0x26 && frame[1] != 0x36)
+        frame[1] = infer_byte1(data32);
+    bool b19_corrupt = (frame[19] == 0x00)
+                    || (frame[19] == 0xA5 && (frame[22] & 0x04) == 0);
+    if (b19_corrupt)
+        frame[19] = derive_status_code(frame[1], data32[16]);
+    nybble_set(frame, 40, 0);
+    nybble_set(frame, 41, checksum_calc(frame,  0, 15));
+    nybble_set(frame, 42, checksum_calc(frame, 16, 31));
+    nybble_set(frame, 43, checksum_calc(frame, 32, 40));
+    nybble_set(frame, 62, checksum_calc(frame, 44, 47));
+    nybble_set(frame, 63, checksum_calc(frame, 48, 61));
     print_frame(frame, F("  Repair frame : "));
 
     if (!do_protected_write(frame, F("  "))) return false;
