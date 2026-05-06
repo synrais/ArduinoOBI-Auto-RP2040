@@ -33,7 +33,7 @@ Min/Max:  fixed 0xF1
 Universal constant across all new-family batteries.  
 Old-family batteries tested (BL1815N type 2, BL1840 no-B) use `0x50` — completely different BMS.  
 **[CONFIRMED]** Charger does NOT validate this byte — tested with `0x02`, charger accepted.  
-Set to `0xF1` during repair to maintain correct frame identity.
+Only written during repair if byte 0 = `0x00` — set to `0xF1`. Otherwise left unchanged.
 
 ---
 
@@ -407,7 +407,7 @@ Always recalculate after any frame change for consistency.
 
 | Byte | Value | Type | Repair action |
 |------|-------|------|--------------|
-| 0 | `0xF1` | Universal constant | Set to `0xF1` (not charger-validated but correct frame identity) |
+| 0 | `0xF1` | Universal constant | Set to `0xF1` only if `0x00` — otherwise leave unchanged |
 | 1 | `0x26` / `0x36` | Variant constant (**charger-validated**) | **MUST preserve** |
 | 2 | `0xBD` / `0xB6` | Variant constant | **MUST preserve** |
 | 3 | `0x13` / `0xC3` | Variant constant | **MUST preserve** |
@@ -456,6 +456,8 @@ Any of the following stops a battery from charging:
 | Nybble 40 (FC) | `0` | |
 | Byte 1 | `0x26` (China) / `0x36` (Vietnam) | Confirmed by validation test |
 | Byte 17 nybble 34 | `0x0` | Confirmed by validation test |
+| Byte 18 | Must not be `0x00` | Battery will not charge if zero |
+| Byte 19 | Must not be `0x00` | Battery will not charge if zero |
 
 **Fields confirmed NOT to stop charging:**
 
