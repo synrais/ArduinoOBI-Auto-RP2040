@@ -26,8 +26,8 @@ Byte 16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31
 ### Byte 0 — BMS Family / Format Identifier
 ```
 Value:    0xF1  (constant — all new-family batteries)
-Nybble 0: 0x1   (low nibble)
-Nybble 1: 0xF   (high nibble)
+Nybble 0: 0x1   (low nybble)
+Nybble 1: 0xF   (high nybble)
 Min/Max:  fixed 0xF1
 ```
 Universal constant across all new-family batteries.  
@@ -179,11 +179,11 @@ Set to `0x02` during repair if zero or corrupt.
 ### Byte 15 — Capacity (partial)
 ```
 Values seen: 0x0C – 0x7E
-Nybble 30 (low):  lower nibble of capacity encoding
-Nybble 31 (high): upper nibble of capacity encoding
+Nybble 30 (low):  lower nybble of capacity encoding
+Nybble 31 (high): upper nybble of capacity encoding
 ```
 This byte works together with byte 16 to encode capacity.  
-The capacity field is nybble_pair(32,33) which spans bytes 15–16 (high nibbles of 15, low nibble of 16... see byte 16).  
+The capacity field is nybble_pair(32,33) which spans bytes 15–16 (high nybbles of 15, low nybble of 16... see byte 16).  
 Variable — depends on battery model and specific pack capacity.  
 **MUST preserve** — encodes actual battery capacity, cannot be guessed.
 
@@ -208,18 +208,18 @@ Vietnam BL1850B consistently shows `0x43` regardless of individual pack variatio
 
 ---
 
-### Byte 17 — The Original Makita Charger Lock Nibble
+### Byte 17 — The Original Makita Charger Lock Nybble
 ```
 Value:    0xD0  (constant — confirmed across all batteries tested)
-Nybble 34 (low):  0x0  — charger lock nibble
+Nybble 34 (low):  0x0  — charger lock nybble
 Nybble 35 (high): 0xD  — unknown purpose
 Min/Max:  fixed 0xD0
 ```
 **[CONFIRMED]** Nybble 34 stops the battery from charging if non-zero.  
 Present in ALL Makita LXT batteries — old and new family — for charger compatibility.  
 Per OBI author Jansson: *"The earliest batteries were locked by the charger setting a  
-certain nibble to a non-zero value. This is still present in all newer batteries."*  
-This is that nibble. Set byte 17 to `0xD0` during repair.
+certain nybble to a non-zero value. This is still present in all newer batteries."*  
+This is that nybble. Set byte 17 to `0xD0` during repair.
 
 ---
 
@@ -315,8 +315,8 @@ Safe to reset nybble 46 to `0` (4/4 health) if value is clearly corrupt (e.g. ou
 ### Byte 24 — Overdischarge Counter (high)
 ```
 Values seen: 0x02 – 0xF2
-Nybble 48 (low):  overdischarge count high nibble
-Nybble 49 (high): overdischarge count low nibble
+Nybble 48 (low):  overdischarge count high nybble
+Nybble 49 (high): overdischarge count low nybble
 Min/Max:          0x02 – 0xF2 (0x00 when no OD events)
 ```
 BMS-written. Counts overdischarge events.  
@@ -327,8 +327,8 @@ BMS-written. Counts overdischarge events.
 ### Byte 25 — Overload Counter (high)
 ```
 Values seen: 0x02 – 0x22
-Nybble 50 (low):  overload count high nibble
-Nybble 51 (high): overload count low nibble
+Nybble 50 (low):  overload count high nybble
+Nybble 51 (high): overload count low nybble
 Min/Max:          0x00 – 0x22
 ```
 BMS-written. Counts overload events.  
@@ -424,7 +424,7 @@ Always recalculate after any frame change for consistency.
 | 14 | `0x02` | Universal constant | Set to `0x02` |
 | 15 | variable | Capacity (partial) | **MUST preserve** |
 | 16 | variable | Capacity (main) | **MUST preserve** |
-| 17 | `0xD0` | Charger lock nibble (nybble 34 — present in ALL batteries) | Set to `0xD0` |
+| 17 | `0xD0` | Charger lock nybble (nybble 34 — present in ALL batteries) | Set to `0xD0` |
 | 18 | `0x8E` | Universal constant | Set to `0x8E` |
 | 19 | variable | Status / variant ID | **MUST preserve** |
 | 20 | variable | Failure code (nybble 40) + CS0 (nybble 41) | Set nybble 40=0, recalc CS0 |
