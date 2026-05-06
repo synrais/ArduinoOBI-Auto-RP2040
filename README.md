@@ -43,7 +43,7 @@ No configuration. No button presses. Just insert the battery and it runs. Remove
 | ⚪ White    | Pulse, No battery / idle                                       |
 | 🔵 Blue     | Battery detected — scan starting                               |
 | 🟡 Yellow   | Battery locked — error reset attempts in progress              |
-| 🟣 Purple   | Checksums corrupt — writing corrected frame to BMS             |
+| 🟣 Purple   | Frame corrupt — writing corrected frame to BMS                 |
 | 🟢 Green    | Scan complete, battery healthy and unlocked                    |
 | 🔴 Red      | Unlock failed or BMS dead                                      |
 | 🟠 Orange   | Blink, Major cell imbalance or broken balancer tab             |
