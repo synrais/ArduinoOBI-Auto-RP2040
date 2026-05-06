@@ -839,7 +839,7 @@ static void print_report(const BatteryInfo &info, const VoltageReadResult &vr,
         Serial.println(F("(unavailable)"));
     }
     Serial.print(F("Detected type  : ")); Serial.println(batt_type_to_int(info.type));
-    Serial.print(F("Battery type   : ")); Serial.print(info.raw.batt_type); Serial.print(F("v  ("));
+    Serial.print(F("Battery type   : ")); Serial.print(info.raw.batt_type); Serial.print(F("  ("));
     if      (info.raw.batt_type<13) Serial.print(F("4 cell BL14xx"));
     else if (info.raw.batt_type<30) Serial.print(F("5 cell BL18xx"));
     else                            Serial.print(F("10 cell BL36xx"));
