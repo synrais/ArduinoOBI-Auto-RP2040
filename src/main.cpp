@@ -864,8 +864,8 @@ static void print_report(const BatteryInfo &info, const VoltageReadResult &vr,
 	  else if (d[1]!=0x00) { snprintf(buf,sizeof(buf),"Byte 1  origin : OK - Unknown (0x%02X)",d[1]); Serial.println(buf); }
       else { snprintf(buf,sizeof(buf),"Byte 1  origin : BAD (0x%02X, must be 0x26/0x36/0x31)",d[1]); Serial.println(buf); }
       uint8_t n34=nybble_get(d,34);
-      if (n34==0) Serial.println(F("Byte 17 lockbit: OK"));
-      else { snprintf(buf,sizeof(buf),"Byte 17 lockbit: BAD (0x%02X, low nybble must be 0)",d[17]); Serial.println(buf); }
+      if (n34==0) Serial.println(F("Byte 17 lock   : OK"));
+      else { snprintf(buf,sizeof(buf),"Byte 17 lock   : BAD (0x%02X, low nybble must be 0)",d[17]); Serial.println(buf); }
       if (d[18]!=0x00) Serial.println(F("Byte 18 ???    : OK"));
       else Serial.println(F("Byte 18 ???    : BAD (0x00, must not be 0)"));
       if (d[19]!=0x00) { snprintf(buf,sizeof(buf),"Byte 19 status : OK (%02X)",d[19]); Serial.println(buf); }
