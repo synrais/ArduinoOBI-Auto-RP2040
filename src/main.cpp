@@ -1036,8 +1036,7 @@ static bool repair_frame(uint8_t data32[BASIC_INFO_LEN]) {
     if (frame[18] == 0x00) frame[18] = 0x8E;
     if (frame[1] != 0x26 && frame[1] != 0x36)
         frame[1] = infer_byte1(data32);
-    bool b19_corrupt = (frame[19] == 0x00)
-                    || (frame[19] == 0xA5 && (frame[22] & 0x04) == 0);
+    bool b19_corrupt = (frame[19] == 0x00) || (frame[19] == 0xA5);
     if (b19_corrupt)
         frame[19] = derive_status_code(frame[1], data32[16]);
     nybble_set(frame, 40, 0);
