@@ -2,7 +2,7 @@
 //  Makita Battery Monitor / Unlock / Omega Lock Utility
 //
 //  Normal mode    : full battery scan + auto-unlock (default)
-//  Omega lock mode: sets charger lock nibble (nybble 34) non-zero
+//  Omega lock mode: sets charger lock nybble (nybble 34) non-zero
 //
 //  Mode select :  bridge GPIO0 -> GPIO1  =>  OMEGA LOCK  (red pulse)
 //                 both pins open         =>  SCAN/UNLOCK (white pulse)
@@ -127,7 +127,7 @@ static constexpr uint16_t LF_CS1  = 0x0004;  // CS1 mismatch (nybbles 16-31)
 static constexpr uint16_t LF_CS2  = 0x0008;  // CS2 mismatch (nybbles 32-40)
 static constexpr uint16_t LF_B0   = 0x0010;  // byte 0 invalid (not 0xF1 or 0x50)
 static constexpr uint16_t LF_B1   = 0x0020;  // byte 1 invalid (not 0x26, 0x36, or 0x31)
-static constexpr uint16_t LF_N34  = 0x0040;  // nybble 34 != 0 (charger lock nibble)
+static constexpr uint16_t LF_N34  = 0x0040;  // nybble 34 != 0 (charger lock nybble)
 static constexpr uint16_t LF_B18  = 0x0080;  // byte 18 == 0x00 (must not be zero)
 static constexpr uint16_t LF_B19  = 0x0100;  // byte 19 == 0x00 (must not be zero)
 
@@ -1033,7 +1033,7 @@ static bool repair_frame(uint8_t data32[BASIC_INFO_LEN]) {
 
     if (data32[0] == 0x50) {
         // ── Old family: minimal safe repair ───────────────────
-        // Only touch the charger lock nibble and failure code.
+        // Only touch the charger lock nybble and failure code.
         // Preserve all other bytes — old family frame layout is different.
         uint8_t b17 = frame[17];
         b17 = (b17 & 0xF0);            // zero nybble 34 (low), preserve nybble 35 (high)
@@ -1210,7 +1210,7 @@ static void step_handle_lock(BatteryInfo &info, uint8_t d[BASIC_INFO_LEN]) {
     }
 
     // Step 2 — Comprehensive frame repair.
-    // Fixes all known corrupt fields: lock nibble, checksums, failure code,
+    // Fixes all known corrupt fields: lock nybble, checksums, failure code,
     // variant bytes, status code, constants. Followed by DA04 internally.
     if (!unlocked) {
         for (uint8_t attempt = 1; attempt <= UNLOCK_MAX_CYCLES && !unlocked; attempt++) {
@@ -1237,7 +1237,7 @@ static void step_handle_lock(BatteryInfo &info, uint8_t d[BASIC_INFO_LEN]) {
 
 // ═══════════════════════════════════════════════════════════════
 //  OMEGA LOCK
-//  Sets nybble 34 (original Makita charger lock nibble) non-zero.
+//  Sets nybble 34 (original Makita charger lock nybble) non-zero.
 //  Present in ALL Makita LXT batteries. Charger rejects if non-zero.
 //  DA04 cannot undo this lock. Only repair_frame() can restore it.
 // ═══════════════════════════════════════════════════════════════
