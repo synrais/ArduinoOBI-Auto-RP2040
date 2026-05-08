@@ -387,25 +387,25 @@ AUX checksums do NOT affect lock state — mismatch does not lock the battery.
 
 | Byte | Value | Type | Repair action |
 |------|-------|------|--------------|
-| 0 | `0xF1` | Universal constant | Set to `0xF1` |
+| 0 | `0xF1` | Universal constant | Leave unchanged |
 | 1 | variable | Variant constant | Leave unchanged |
 | 2 | variable | Variant constant | Leave unchanged |
 | 3 | variable | Variant constant | Leave unchanged |
 | 4 | variable | Variant constant | Leave unchanged |
-| 5 | `0x58` | Universal constant | Set to `0x58` |
-| 6 | `0x00` | Universal constant | Set to `0x00` |
-| 7 | `0x00` | Universal constant | Set to `0x00` |
+| 5 | `0x58` | Universal constant | Leave unchanged |
+| 6 | `0x00` | Universal constant | Leave unchanged |
+| 7 | `0x00` | Universal constant | Leave unchanged |
 | 8 | variable | Unknown / BMS state | Leave unchanged |
 | 9 | variable | Unknown / BMS state (= byte 8) | Leave unchanged |
-| 10 | `0x40` | Universal constant | Set to `0x40` |
-| 11 | `0x21` | Universal constant | Set to `0x21` |
+| 10 | `0x40` | Universal constant | Leave unchanged |
+| 11 | `0x21` | Universal constant | Leave unchanged |
 | 12 | variable | Variant constant | Leave unchanged |
-| 13 | `0x80` | Universal constant | Set to `0x80` |
-| 14 | `0x02` | Universal constant | Set to `0x02` |
+| 13 | `0x80` | Universal constant | Leave unchanged |
+| 14 | `0x02` | Universal constant | Leave unchanged |
 | 15 | variable | Capacity (partial) | Leave unchanged |
 | 16 | variable | Capacity (main) | Leave unchanged |
 | 17 | `0xD0` | Charger lock nybble (nybble 34) | Preserve nybble 35, zero nybble 34 - **charger-validated** |
-| 18 | `0x8E` | Universal constant | Set to `0x8E` |
+| 18 | `0x8E` | Universal constant | Leave unchanged |
 | 19 | variable | Status / variant ID | Leave unchanged |
 | 20 | variable | Fault state (nybble 40) + CS0 (nybble 41) | Recalculate CS0 - **charger-validated** |
 | 21 | variable | CS1 (nybble 42) + CS2 (nybble 43) | Recalculate CS2 - **charger-validated** |
