@@ -140,21 +140,16 @@ If a battery is locked, the monitor performs an unlock sequence automatically. I
 ### Step 1 — Error reset (yellow)
 The monitor power-cycles the bus, enters test mode, and sends the standard `DA 04` error-reset command. This tells the BMS to clear its internal error register and attempt its own self-repair. The bus is then re-read and all lock causes are checked. This handles the most common real-world lock conditions — overdischarge, overload, naturally triggered failure codes. A single pass is usually enough for naturally locked batteries on all battery types.
 
-### Step 2 — Comprehensive frame repair (purple)
-If the battery is still locked after DA04, the monitor performs a full frame repair. This goes well beyond checksum correction — it fixes every known lock cause in a single write:
+### Step 2 — Frame repair (purple)
+If the battery is still locked after DA04, the monitor performs a frame repair. Based on exhaustive testing of every field in the frame, the charger validates exactly three things:
 
-- **Nybble 34** — charger lock nybble restored to 0
-- **Failure code** — nybble 40 cleared to 0
-- **Universal constants** — all known fixed-value bytes restored if corrupt
-- **Byte 1** — variant identifier restored if invalid
-- **Status code** — byte 19 restored from variant + capacity if corrupt or zero
-- **All 5 checksums** — recalculated from the corrected frame
+- **Nybble 34** — charger lock nybble, must be 0
+- **CS0** — checksum of nybbles 0–15, must be correct
+- **CS2** — checksum of nybbles 32–40, must be correct
 
-All battery-specific data is preserved — cycle count, OD counter, overload counter, capacity, health history, and unknown runtime fields are left completely untouched. After a successful frame write, a DA04 is sent automatically to clear the internal error register so the battery charges on first charger insert.
+The repair zeros nybble 34 and recalculates all five checksums. All other frame data — cycle count, OD counter, overload counter, capacity, health history, variant bytes, status code — is left completely untouched. After a successful frame write, a DA04 is sent automatically to clear the internal error register so the battery charges on first charger insert.
 
 Frame repair is attempted up to six times. In practice almost all batteries unlock on the first or second attempt. If all attempts are exhausted without success the LED turns red.
-
-DEAD, OVERLOADED, WARNING or any non-zero failure code, corrupt checksums, invalid variant bytes, non-zero charger lock nybble, or zero status/constant bytes all contribute to the locked state and proceed into the unlock sequence.
 
 ---
 
@@ -162,7 +157,7 @@ DEAD, OVERLOADED, WARNING or any non-zero failure code, corrupt checksums, inval
 
 Bridging GPIO0 → GPIO1 switches the device into **Omega Lock mode** (idle LED pulses red). This mode sets the original Makita charger lock nybble — nybble 34 — to a non-zero value. The charger checks this nybble before allowing charging to begin, a mechanism present in every Makita LXT battery from the earliest protocol through to current production.
 
-The frame remains internally consistent — all checksums are valid, no failure codes are set. The battery will report UNLOCKED to software that only checks checksums and failure codes, but the charger rejects it. DA04 (error reset) will fix this on older batteries, newer batteries the BMS may see this old fault flag and set the new fault flag nybble 40 to 3 corrupting checksums, both of which are recoverably only using this project.
+The frame remains internally consistent — all checksums are valid, nybble 34 is the only thing non-zero. The battery will report UNLOCKED to any software that only checks checksums and failure codes, but the charger rejects it immediately. DA04 alone cannot undo this lock on newer batteries — the omega lock must be reversed by zeroing nybble 34 and recalculating checksums, which the scan/unlock mode does automatically.
 
 When a battery is detected the device reads the frame and identifies the battery type. Types 5, 6, and unknown are rejected immediately (yellow LED) — only types 0, 2, and 3 are supported. If the battery is already omega locked, the device reports it and stops.
 
