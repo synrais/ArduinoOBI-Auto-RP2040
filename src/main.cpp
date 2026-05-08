@@ -843,8 +843,7 @@ static void print_report(const BatteryInfo &info, const VoltageReadResult &vr,
       else if (d[1]==0x31) Serial.println(F("Byte 1  origin : Old family (31)"));
       else { snprintf(buf,sizeof(buf),"Byte 1  origin : Unknown (%02X)",d[1]); Serial.println(buf); }
       uint8_t n34=nybble_get(d,34);
-      if (n34==0) Serial.println(F("Nybble 34 lock : OK"));
-      else { snprintf(buf,sizeof(buf),"Nybble 34 lock : BAD (%X, must be 0)",n34); Serial.println(buf); }
+      snprintf(buf,sizeof(buf),"Nybble 34 lock : %s (%X)",(n34==0?"OK":"BAD"),n34); Serial.println(buf);
       snprintf(buf,sizeof(buf),"Byte 19 status : (%02X)",d[19]); Serial.println(buf);
       Serial.print(F("Nybble 40 code : ")); print_failure_code(info.raw.failure_code); }
     if (info.locked) print_lock_causes(info, d);
@@ -984,12 +983,9 @@ static bool repair_frame(uint8_t data32[BASIC_INFO_LEN]) {
     // Set nybble 34 = 0 — the only charger lock nybble (byte 17 high nybble preserved)
     frame[17] = (frame[17] & 0xF0) | 0x00;
 
-    // Recalculate all checksums
-    nybble_set(frame, 41, checksum_calc(frame,  0, 15));
-    nybble_set(frame, 42, checksum_calc(frame, 16, 31));
-    nybble_set(frame, 43, checksum_calc(frame, 32, 40));
-    nybble_set(frame, 62, checksum_calc(frame, 44, 47));
-    nybble_set(frame, 63, checksum_calc(frame, 48, 61));
+    // Recalculate CS0 and CS2 — the only checksums the charger validates
+    nybble_set(frame, 41, checksum_calc(frame,  0, 15));  // CS0
+    nybble_set(frame, 43, checksum_calc(frame, 32, 40));  // CS2
     print_frame(frame, F("  Repair frame : "));
 
     if (!do_protected_write(frame, F("  "))) return false;
