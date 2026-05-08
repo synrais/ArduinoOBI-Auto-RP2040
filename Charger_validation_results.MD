@@ -58,8 +58,8 @@ garbage frames all charged successfully with only these three conditions met.
 | **17** | ✅ | ❌ | **0xFF sets nybble 34 non-zero — charger rejects** |
 | 18 | ✅ | ✅ | |
 | 19 | ✅ | ✅ | |
-| 20 | ❌ | ❌ | Contains FC (nybble 40) + CS0 (nybble 41) — charger rejects |
-| 21 | ❌ | ❌ | Contains CS1 + CS2 — charger rejects |
+| 20 | ❌ | ❌ | **Contains FC (nybble 40) + CS0 (nybble 41) — charger rejects** |
+| 21 | ❌ | ❌ | **Contains CS1 + CS2 — charger rejects** |
 | 22 | ✅ | ⚠️ | BMS went bus-silent on 0xFF (nybble 44=0xF) — recovered on retry, then ✅ |
 | 23 | ✅ | ✅ | |
 | 24 | ✅ | ✅ | |
