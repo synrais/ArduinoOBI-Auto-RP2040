@@ -460,7 +460,6 @@ even if all checksums are correct and nybble 34 = 0.
 - **BL1840B frames:** No confirmed healthy frames in dataset yet.
 - **Status `A5`:** Seen on dead-cell batteries of both variants. Confirmed not charger-validated — `0xA5` charged fine. Likely a BMS fault indicator only.
 - **Vietnam BL1830B/BL1860B:** No frames seen. Unknown if `36 B6` extends to these models.
-- **Type 5 (F0513 chip):** Implementation matches OBI original but untested on real hardware.
 - **DA04 after frame write:** Confirmed necessary for reliable first-insert charging.
 
 ---
