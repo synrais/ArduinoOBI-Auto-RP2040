@@ -388,10 +388,10 @@ AUX checksums do NOT affect lock state — mismatch does not lock the battery.
 | Byte | Value | Type | Repair action |
 |------|-------|------|--------------|
 | 0 | `0xF1` | Universal constant | Set to `0xF1` |
-| 1 | `0x26` / `0x36` | Variant constant | Leave unchanged |
-| 2 | `0xBD` / `0xB6` | Variant constant | Leave unchanged  |
-| 3 | `0x13` / `0xC3` | Variant constant | Leave unchanged  |
-| 4 | `0x14` / `0x18` | Variant constant | Leave unchanged |
+| 1 | variable | Variant constant | Leave unchanged |
+| 2 | variable | Variant constant | Leave unchanged  |
+| 3 | variable | Variant constant | Leave unchanged  |
+| 4 | variable | Variant constant | Leave unchanged |
 | 5 | `0x58` | Universal constant | Set to `0x58` |
 | 6 | `0x00` | Universal constant | Set to `0x00` |
 | 7 | `0x00` | Universal constant | Set to `0x00` |
@@ -399,7 +399,7 @@ AUX checksums do NOT affect lock state — mismatch does not lock the battery.
 | 9 | variable | Unknown / BMS state (= byte 8) | Leave unchanged  |
 | 10 | `0x40` | Universal constant | Set to `0x40` |
 | 11 | `0x21` | Universal constant | Set to `0x21` |
-| 12 | `0xD0` / `0x01` | Variant constant | Leave unchanged |
+| 12 | variable | Variant constant | Leave unchanged |
 | 13 | `0x80` | Universal constant | Set to `0x80` |
 | 14 | `0x02` | Universal constant | Set to `0x02` |
 | 15 | variable | Capacity (partial) | Leave unchanged  |
