@@ -409,7 +409,7 @@ AUX checksums do NOT affect lock state — mismatch does not lock the battery.
 | 19 | variable | Status / variant ID | Leave unchanged |
 | 20 | variable | Fault state (nybble 40) + CS0 (nybble 41) | Recalculate CS0 - charger-validated |
 | 21 | variable | CS1 (nybble 42) + CS2 (nybble 43) | Recalculate CS2 - charger-validated |
-| 22 | `0x00` | BMS-managed cell failure flag (bit 2) | Set to `0x00` — BMS corrects bit 2 on boot anyway |
+| 22 | variable | BMS-managed cell failure flag (bit 2) | BMS corrects bit 2 on boot |
 | 23 | variable | Damage rating (nybble 46) + unknown | Leave unchanged  |
 | 24 | variable | Overdischarge counter | Leave unchanged  |
 | 25 | variable | Overload counter | Leave unchanged  |
