@@ -113,13 +113,15 @@ Byte  Nybbles   Field
                 Nybble 7 varies by variant (1 = China, C = Vietnam).
                 China byte 3 = 0x13, Vietnam byte 3 = 0xC3
 
-  4    8–9      UNKNOWN — varies by charge state, leave unchanged during repair
+  4    8–9      MANUFACTURING VARIANT — DO NOT OVERWRITE
+                China/Murata: byte 4 = 0x14
+                Vietnam/Samsung: byte 4 = 0x18
 
   5   10–11     CONFIRMED CONSTANT: byte 5 = 0x58 across all new-family batteries
 
   6   12–13     CONFIRMED CONSTANT: bytes 6-7 = 0x00 0x00 across all new-family batteries
 
-  7   14–15     UNKNOWN — leave unchanged during repair
+  7   14–15     CONFIRMED CONSTANT: byte 7 = 0x00 across all new-family batteries
 
   8   16–17     UNKNOWN — potentially BMS-managed (see Section 12)
   9   18–19     Writing wrong values here caused FC3 + checksum corruption
@@ -182,8 +184,9 @@ Byte  Nybbles   Field
  22   44–45     DOC: Nybble 44 bit 2 = cell failure flag (1 = failed)
                 Nybble 45 = UNKNOWN (BMS accepts all values, charger validation unknown)
 
- 23   46–47     DOC: Nybble 46 bits 1–3 = damage rating (old family only)
-                  Not applicable to type 0/2/3/5/6 batteries
+ 23   46–47     DOC: Nybble 46 bits 1–3 = damage rating (valid range 0–7)
+                  A rating below 3 = 4/4 health, 7 = 0/4 health
+                  BMS-written on all new-family batteries — values seen 0x01–0x83
                 Nybble 47 = UNKNOWN (BMS accepts all values, charger validation unknown)
 
  24   48–49     DOC: Overdischarge counter (8-bit, nybble 48 high, 49 low)
@@ -303,7 +306,7 @@ Always read these from the existing frame and preserve them exactly.
 - **Byte 0 = `0x50`** — completely different from `0xF1` new family
 - **No model string** — `read_model()` returns empty
 - **Health/cycle/OD/overload = 0** — old firmware never implemented these registers. Correct and expected, not corruption.
-- **Damage rating** in nybble 46 applies to this family (not type 0/2/3/5/6 new family)
+- **Damage rating** in nybble 46 applies to this family as well as new-family batteries
 - **Aux checksums = 0x21** — correctly populated despite other health fields being zero
 - **Type detection requires testmode** — probe enters testmode briefly then power cycles. Do NOT poll after this — let the chip settle.
 
@@ -337,7 +340,7 @@ Byte 18 = 0x8E
 
 **Variant-specific constants:**
 ```
-China/Murata:   Byte 1=0x26, Byte 2=0xBD, Byte 3=0x13, Byte 4=0x14, Byte 12=0xD0
+China/Murata:    Byte 1=0x26, Byte 2=0xBD, Byte 3=0x13, Byte 4=0x14, Byte 12=0xD0
 Vietnam/Samsung: Byte 1=0x36, Byte 2=0xB6, Byte 3=0xC3, Byte 4=0x18, Byte 12=0x01
                  Byte 16=0x43 (constant for all Vietnam BL1850B tested)
 ```
@@ -345,13 +348,13 @@ Vietnam/Samsung: Byte 1=0x36, Byte 2=0xB6, Byte 3=0xC3, Byte 4=0x18, Byte 12=0x0
 **Variable fields (battery-specific runtime data):**
 ```
 Byte 0:      family identifier (0xF1 new, 0x50 old) — never modified during repair
-Bytes 8-9:   charge-state related, varies
+Bytes 8-9:   unknown / potentially BMS-managed, varies
 Byte 15:     capacity + other data, varies
 Byte 16:     capacity (China varies by model, Vietnam constant at 0x43)
 Byte 19:     status code (model+variant identifier)
 Bytes 20-21: failure code + CS0 checksum
-Bytes 21-23: CS1, CS2, cell failure flag
-Bytes 23-30: health counters, cycle count, unknown runtime data
+Bytes 22-23: CS1, CS2, cell failure flag, damage rating
+Bytes 24-30: health counters, cycle count, unknown runtime data
 Byte 31:     AUX checksums
 ```
 
