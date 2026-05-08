@@ -55,7 +55,7 @@ garbage frames all charged successfully with only these three conditions met.
 | 14 | ✅ | ✅ | |
 | 15 | ✅ | ✅ | |
 | 16 | ✅ | ✅ | |
-| **17** | ✅ | ❌ | **0xFF sets nybble 34 non-zero — charger rejects** |
+| **17** | ✅ | ❌ | **nybble 34 non-zero — charger rejects** |
 | 18 | ✅ | ✅ | |
 | 19 | ✅ | ✅ | |
 | 20 | ❌ | ❌ | **Contains FC (nybble 40) + CS0 (nybble 41) — charger rejects** |
