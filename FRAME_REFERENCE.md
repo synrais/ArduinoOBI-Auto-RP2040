@@ -217,7 +217,7 @@ Byte  Nybbles   Field
  29   58–59     UNKNOWN — varies per battery, BMS accepts all values tested
 
  30   60–61     UNKNOWN — varies per battery, BMS accepts all values tested
-                Nybble 60: 0 on most good batteries, 4 on our corrupted battery
+                Nybble 60: 0 on most good batteries
                 Charger confirmed: does NOT validate nybble 60
 
  31   62–63     Nybble 62 = AUX Checksum 0 (sum of nybbles 44–47 & 0x0F)
