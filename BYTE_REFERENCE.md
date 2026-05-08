@@ -210,7 +210,7 @@ Nybble 34 (low):  0x0  — charger lock nybble
 Nybble 35 (high): 0xD  — unknown purpose
 Min/Max:  fixed 0xD0
 ```
-Nybble 34 stops the battery from charging if non-zero — charger-validated.
+Nybble 34 stops the battery **Will stop charging** if non-zero — charger-validated.
 Present in ALL Makita LXT batteries — old and new family — for charger compatibility.  
 Per OBI author Jansson: *"The earliest batteries were locked by the charger setting a  
 certain nybble to a non-zero value. This is still present in all newer batteries."*  
@@ -258,7 +258,7 @@ Failure code min: 0x0 (OK)
 Failure code max: 0xF (dead)
 ```
 **SHOULD preserve** Nybble 40 is informational only.
-Bad CS0 (nybble 41) DOES stop charging — charger-validated.
+Bad CS0 (nybble 41) **Will stop charging** — charger-validated.
 Recalculate CS0 (nybble 41) after any frame change.
 
 ---
@@ -269,7 +269,7 @@ Nybble 42 (low):  Checksum CS1 = sum(nybbles 16–31) & 0x0F
 Nybble 43 (high): Checksum CS2 = sum(nybbles 32–40) & 0x0F
 ```
 Recalculate CS2 (nybble 43) after any frame change.
-Bad CS2 (nybble 43) DOES stop charging — charger-validated.
+Bad CS2 (nybble 43) **Will stop charging** — charger-validated.
 
 ---
 
