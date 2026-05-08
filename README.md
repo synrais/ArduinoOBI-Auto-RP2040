@@ -147,7 +147,7 @@ If the battery is still locked after DA04, the monitor performs a frame repair. 
 - **CS0** — checksum of nybbles 0–15, must be correct
 - **CS2** — checksum of nybbles 32–40, must be correct
 
-The repair zeros nybble 34 and recalculates all five checksums. All other frame data — cycle count, OD counter, overload counter, capacity, health history, variant bytes, status code — is left completely untouched. After a successful frame write, a DA04 is sent automatically to clear the internal error register so the battery charges on first charger insert.
+The repair zeros nybble 34 and recalculates CS0 and CS2 — the only two checksums the charger validates. All other frame data — cycle count, OD counter, overload counter, capacity, health history, variant bytes, status code, CS1, AUX checksums — is left completely untouched. After a successful frame write, a DA04 is sent automatically to clear the internal error register so the battery charges on first charger insert.
 
 Frame repair is attempted up to six times. In practice almost all batteries unlock on the first or second attempt. If all attempts are exhausted without success the LED turns red.
 
