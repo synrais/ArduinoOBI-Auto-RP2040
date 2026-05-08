@@ -30,7 +30,7 @@ Nybble 0: 0x1   (low nybble)
 Nybble 1: 0xF   (high nybble)
 Min/Max:  fixed 0xF1
 ```
-Type: Universal constant  
+Type: Variant constant  
 Repair action: Leave unchanged
 
 ---
@@ -432,7 +432,7 @@ Repair action: Leave unchanged
 
 | Byte | Value | Type | Repair action |
 |------|-------|------|--------------|
-| 0 | `0xF1` | Universal constant | Leave unchanged |
+| 0 | variable | Variant constant | Leave unchanged |
 | 1 | variable | Variant constant | Leave unchanged |
 | 2 | variable | Variant constant | Leave unchanged |
 | 3 | variable | Variant constant | Leave unchanged |
