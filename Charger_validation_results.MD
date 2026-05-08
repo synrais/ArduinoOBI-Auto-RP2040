@@ -69,7 +69,7 @@ garbage frames all charged successfully with only these three conditions met.
 | 28 | ✅ | ✅ | |
 | 29 | ✅ | ✅ | |
 | 30 | ✅ | ✅ | |
-| 31 | ✅ | ✅ | AUX checksums — confirmed no lock effect |
+| 31 | ✅ | ✅ | |
 
 ---
 
