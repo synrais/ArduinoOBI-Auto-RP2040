@@ -176,10 +176,10 @@ Byte  Nybbles   Field
                   1  = Overloaded
                   5  = Warning
                   15 = Dead (FC_DEAD)
-                Nybble 41 = Checksum CS0 (sum of nybbles 0–15 & 0x0F) — charger-validated.
+                Nybble 41 = Checksum CS0 = min(sum(nybbles 0–15), 0xFF) & 0x0F — charger-validated.
 
- 21   42–43     Nybble 42 = Checksum CS1 (sum of nybbles 16–31 & 0x0F)
-                Nybble 43 = Checksum CS2 (sum of nybbles 32–40 & 0x0F) — charger-validated.
+ 21   42–43     Nybble 42 = Checksum CS1 = min(sum(nybbles 16–31), 0xFF) & 0x0F
+                Nybble 43 = Checksum CS2 = min(sum(nybbles 32–40), 0xFF) & 0x0F — charger-validated.
 
  22   44–45     DOC: Nybble 44 bit 2 = cell failure flag (1 = failed)
                 Nybble 45 = UNKNOWN (BMS accepts all values, charger validation unknown)
@@ -208,8 +208,8 @@ Byte  Nybbles   Field
 
  30   60–61     UNKNOWN — varies per battery, BMS accepts all values tested
 
- 31   62–63     Nybble 62 = AUX Checksum 0 (sum of nybbles 44–47 & 0x0F)
-                Nybble 63 = AUX Checksum 1 (sum of nybbles 48–61 & 0x0F)
+ 31   62–63     Nybble 62 = AUX Checksum 0 = min(sum(nybbles 44–47), 0xFF) & 0x0F
+                Nybble 63 = AUX Checksum 1 = min(sum(nybbles 48–61), 0xFF) & 0x0
                 AUX checksums do NOT affect lock state
 ```
 
