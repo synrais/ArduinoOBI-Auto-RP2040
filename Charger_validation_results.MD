@@ -159,7 +159,7 @@ Following the full sweep, targeted tests were run to confirm the findings and di
 | 7 | Byte 1 = 0x36 (Vietnam code in China battery) | ✅ | ✅ | ✅ PASS |
 | 8 | Byte 18 = 0x00 | ✅ | ✅ | ✅ PASS |
 | 9 | Byte 19 = 0x00 | ✅ | ✅ | ✅ PASS |
-| 10 | Byte 19 = 0xA5 | ✅ | ✅ | ✅ PASS |
+| 10 | Byte 19 = 0xA5 (Dead code?) | ✅ | ✅ | ✅ PASS |
 
 ---
 
