@@ -61,7 +61,7 @@ static constexpr uint8_t  TYPE5_CMD_MODEL    = 0x31; // reads model bytes
 static constexpr uint8_t  TYPE5_CMD_TEMP     = 0x52; // reads cell temperature
 // Some Type 5 variants require multiple read attempts before all
 // cells report valid data — this is a hardware ADC property.
-static constexpr uint8_t  TYPE5_MAX_ATTEMPTS = 6;    // max read attempts per scan
+static constexpr uint8_t  TYPE5_MAX_ATTEMPTS = 10;    // max read attempts per scan
 
 // ─── Type 6 constants ─────────────────────────────────────────
 static constexpr uint8_t  TYPE6_VOLT_READ    = 0xD4; // voltage read prefix
