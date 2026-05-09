@@ -43,37 +43,30 @@ static constexpr uint8_t PIN_MODE_IN1     = 1;   // Omega lock mode (bridge GPIO
   static constexpr bool MODE_PIN_ACTIVE_HIGH = false;
 #endif
 
-// ─── Protocol constants ───────────────────────────────────────
-static constexpr uint16_t BUS_BYTE_GAP_US   = 90;   // inter-byte gap on 1-Wire bus (OBI original value)
-static constexpr uint16_t BUS_SETTLE_US     = 100;  // settle before reading response bytes
-static constexpr uint16_t BUS_ENABLE_MS     = 150;  // bus power-up settle before reset
-static constexpr uint16_t BUS_PRESENCE_MS   = 150;  // presence poll settle time
-static constexpr uint16_t POWERCYCLE_OFF_MS = 100;  // bus off time
-static constexpr uint16_t POWERCYCLE_ON_MS  = 150;  // bus on settle after power cycle
+// ─── 1-Wire bus timing ───────────────────────────────────────
+static constexpr uint16_t BUS_BYTE_GAP_US    = 90;   // inter-byte gap on 1-Wire bus
+static constexpr uint16_t BUS_SETTLE_US      = 100;  // settle before reading response bytes
+static constexpr uint16_t BUS_SETTLE_ON_MS   = 150;  // bus power-up settle after ENABLE=HIGH
+//                                                       (covers: enable, presence poll, powercycle-on)
+static constexpr uint16_t POWERCYCLE_OFF_MS  = 100;  // bus off time during power cycle
 
-// Inter-step delays for the frame-write / store sequence.
-static constexpr uint16_t WRITE_ARM_DELAY_MS    = 30;
-static constexpr uint16_t WRITE_FRAME_DELAY_MS  = 30;
-static constexpr uint16_t WRITE_STORE_DELAY_MS  = 30;
-static constexpr uint16_t TESTMODE_SETTLE_MS    = 30;
-
-// Polling — chip goes bus-silent for ~3 s during frame commit then wakes with data ready.
-// 10 s failsafe gives 3x headroom. 25 ms poll interval catches recovery quickly.
-static constexpr uint32_t NO_RESPONSE_TIMEOUT_MS = 10000;
-static constexpr uint16_t NO_RESPONSE_POLL_MS    = 25;
+// ─── Inter-command delays ─────────────────────────────────────
+// All inter-step delays use 30ms — consistent across frame-write,
+// testmode, and Type 5 session sequences.
+static constexpr uint16_t INTER_CMD_MS       = 30;
 
 // ─── Type 5 (F0513) constants ─────────────────────────────────
-// F0513 needs a long power-up settle and a wider reset gap than other types.
-static constexpr uint16_t TYPE5_POWERUP_MS    = 420;  // power-up settle
-static constexpr uint16_t TYPE5_RESET_GAP_US  = 420;  // post-reset gap
-static constexpr uint8_t  TYPE5_CMD_SESSION   = 0x99; // enters model-read session
-static constexpr uint8_t  TYPE5_CMD_MODEL     = 0x31; // queries model bytes
-static constexpr uint8_t  TYPE5_CMD_TEMP      = 0x52; // reads cell temperature
+static constexpr uint8_t  TYPE5_CMD_SESSION  = 0x99; // enters voltage read session
+static constexpr uint8_t  TYPE5_CMD_MODEL    = 0x31; // reads model bytes
+static constexpr uint8_t  TYPE5_CMD_TEMP     = 0x52; // reads cell temperature
+// Some Type 5 variants require multiple read attempts before all
+// cells report valid data — this is a hardware ADC property.
+static constexpr uint8_t  TYPE5_MAX_ATTEMPTS = 6;    // max read attempts per scan
 
 // ─── Type 6 constants ─────────────────────────────────────────
-static constexpr uint8_t  TYPE6_VOLT_READ     = 0xD4; // voltage read prefix
-static constexpr float    TEMP6_A             = 9323.0f;
-static constexpr float    TEMP6_B             = -40.0f;
+static constexpr uint8_t  TYPE6_VOLT_READ    = 0xD4; // voltage read prefix
+static constexpr float    TEMP6_A            = 9323.0f;
+static constexpr float    TEMP6_B            = -40.0f;
 
 // ─── Protocol commands ────────────────────────────────────────
 static constexpr uint8_t CMD_BASIC_INFO[]     = { 0xAA, 0x00 };
@@ -81,14 +74,16 @@ static constexpr uint8_t CMD_MODEL[]          = { 0xDC, 0x0C };
 static constexpr uint8_t CMD_TESTMODE_ENTER[] = { 0xD9, 0x96, 0xA5 };
 static constexpr uint8_t CMD_TESTMODE_EXIT[]  = { 0xD9, 0xFF, 0xFF };
 static constexpr uint8_t CMD_RESET_ERRORS[]   = { 0xDA, 0x04 };
-static constexpr uint8_t CMD_CC_F0[]          = { 0xF0, 0x00 }; // arms frame write path
+static constexpr uint8_t CMD_CC_F0[]          = { 0xF0, 0x00 }; // ADC trigger / frame-write arm
 static constexpr uint8_t CMD_STORE[]          = { 0x55, 0xA5 };
 static constexpr uint8_t FRAME_WRITE_OPCODE   = 0x0F;
 static constexpr uint8_t FRAME_WRITE_PAD      = 0x00;
 static constexpr uint8_t BASIC_INFO_LEN       = 32;
 static constexpr uint8_t TYPE_PROBE_MAGIC     = 0x06;
-static constexpr float   TEMP_INVALID         = -999.0f;
+static constexpr float    TEMP_INVALID         = -999.0f;
+static constexpr uint8_t  MAX_CELLS            = 10;
 
+// ─── Health / battery data ────────────────────────────────────
 static constexpr uint8_t  HEALTH_SCALE_EXTENDED_CODES[] = { 26, 28, 40, 50 };
 static constexpr size_t   HEALTH_SCALE_EXTENDED_COUNT   =
     sizeof(HEALTH_SCALE_EXTENDED_CODES) / sizeof(HEALTH_SCALE_EXTENDED_CODES[0]);
@@ -97,34 +92,41 @@ static constexpr uint16_t HEALTH_SCALE_EXTENDED = 1000;
 static constexpr float    HEALTH_MAX            = 4.0f;
 static constexpr float    SOC_DIVISOR           = 2880.0f;
 
-// ─── Scan timing ─────────────────────────────────────────────
+// ─── Scan / mode timing ───────────────────────────────────────
 static constexpr uint16_t POLL_INTERVAL_MS      = 200;
+static constexpr uint16_t MODE_DEBOUNCE_MS      = 50;
+static constexpr uint8_t  MODE_DEBOUNCE_COUNT   = 4;
+
+// ─── No-response polling ─────────────────────────────────────
+// Chip goes bus-silent for ~3s during frame commit. 10s failsafe = 3x headroom.
+static constexpr uint32_t NO_RESPONSE_TIMEOUT_MS = 10000;
+static constexpr uint16_t NO_RESPONSE_POLL_MS    = 25;
 
 // ─── Unlock / lock attempt limits ────────────────────────────
 static constexpr uint8_t  UNLOCK_MAX_CYCLES     = 6;
 static constexpr uint8_t  LOCK_MAX_ATTEMPTS     = 6;
 
 // ─── LED parameters ──────────────────────────────────────────
-static constexpr uint8_t  LED_BRIGHTNESS_MAX    = 80;
-static constexpr uint8_t  LED_FLASH_COUNT       = 3;
-static constexpr uint16_t LED_FLASH_ON_MS       = 200;
-static constexpr uint16_t LED_FLASH_OFF_MS      = 100;
-static constexpr uint16_t LED_PULSE_PERIOD_MS        = 2000;  // full breathe cycle (ms)
-static constexpr uint8_t  LED_PULSE_INTERVAL_MS      = 20;    // how often core1 updates the pulse
-static constexpr float    IMBALANCE_THRESHOLD_V      = 0.300f;// cell diff above this = physical warning
-static constexpr uint16_t IMBALANCE_BLINK_INTERVAL_MS = 500;  // orange blink every N ms when imbalanced
-static constexpr uint16_t IMBALANCE_BLINK_ON_MS       = 80;    // blink duration
+static constexpr uint8_t  LED_BRIGHTNESS_MAX         = 80;
+static constexpr uint8_t  LED_FLASH_COUNT            = 3;
+static constexpr uint16_t LED_FLASH_ON_MS            = 200;
+static constexpr uint16_t LED_FLASH_OFF_MS           = 100;
+static constexpr uint16_t LED_PULSE_PERIOD_MS        = 2000;
+static constexpr uint8_t  LED_PULSE_INTERVAL_MS      = 20;
+static constexpr float    IMBALANCE_THRESHOLD_V      = 0.300f;
+static constexpr uint16_t IMBALANCE_BLINK_INTERVAL_MS = 500;
+static constexpr uint16_t IMBALANCE_BLINK_ON_MS      = 80;
 
 // ─── Watchdog ────────────────────────────────────────────────
-// Must exceed NO_RESPONSE_TIMEOUT_MS (10 s). Set to 12 s.
+// Must exceed NO_RESPONSE_TIMEOUT_MS (10s). Set to 12s.
 static constexpr uint32_t WATCHDOG_TIMEOUT_MS = 12000;
 
 // ─── Lock cause flags (bitfield) ─────────────────────────────
 // Confirmed by systematic charger validation testing (193 fields tested).
-// Only these three are actually validated by the charger.
 static constexpr uint16_t LF_CS0  = 0x0002;  // CS0 mismatch (nybbles 0-15)
 static constexpr uint16_t LF_CS2  = 0x0008;  // CS2 mismatch (nybbles 32-40)
 static constexpr uint16_t LF_N34  = 0x0040;  // nybble 34 != 0 (charger lock nybble)
+
 
 // ─── Return codes / types ─────────────────────────────────────
 enum BasicInfoResult { BASIC_INFO_NO_RESPONSE = 0, BASIC_INFO_OK = 1, BASIC_INFO_PRE_TYPE0 = -1 };
@@ -171,8 +173,6 @@ struct HealthData {
     uint32_t charge_level;
 };
 
-static constexpr uint8_t MAX_CELLS = 10;
-
 struct CellVoltages {
     float   v[MAX_CELLS];
     uint8_t n;
@@ -216,6 +216,15 @@ static OneWire           g_ow(PIN_ONEWIRE);
 static Adafruit_NeoPixel g_pixel(NUM_PIXELS, NEOPIXEL_OUT_PIN, NEO_GRB + NEO_KHZ800);
 static bool              g_charger_arm_issued = false;
 static bool              g_in_testmode        = false;
+static volatile bool     g_pulse_active       = false;
+static volatile bool     g_pulse_scan_mode    = true;
+static volatile bool     g_imbalance          = false;
+static volatile uint8_t  g_result_r           = 0;
+static volatile uint8_t  g_result_g           = 0;
+static volatile uint8_t  g_result_b           = 0;
+static uint32_t          g_last_poll          = 0;
+static uint8_t           g_mode_debounce      = 0;
+static uint32_t          g_last_mode_poll     = 0;
 
 // ─── Watchdog helpers ────────────────────────────────────────
 static inline void wdt_kick() {
@@ -237,12 +246,7 @@ static void safe_delay(uint32_t ms) {
     wdt_kick();
 }
 
-// ─── Core 1 — LED animation flags ────────────────────────────
-static volatile bool g_pulse_active    = false;
-static volatile bool g_pulse_scan_mode = true;
-static volatile bool g_imbalance       = false;
-
-// ─── NeoPixel ────────────────────────────────────────────────
+// ─── NeoPixel colours ─────────────────────────────────────────
 struct Colour { uint8_t r, g, b; };
 static constexpr Colour COL_OFF    = {  0,                  0,                  0 };
 static constexpr Colour COL_GREEN  = {  0, LED_BRIGHTNESS_MAX,                  0 };
@@ -252,10 +256,6 @@ static constexpr Colour COL_BLUE   = {  0,                  0, LED_BRIGHTNESS_MA
 static constexpr Colour COL_RED    = { LED_BRIGHTNESS_MAX,  0,                  0 };
 static constexpr Colour COL_PURPLE = { LED_BRIGHTNESS_MAX,  0, LED_BRIGHTNESS_MAX };
 static constexpr Colour COL_WHITE  = { LED_BRIGHTNESS_MAX, LED_BRIGHTNESS_MAX, LED_BRIGHTNESS_MAX };
-
-static volatile uint8_t g_result_r = 0;
-static volatile uint8_t g_result_g = 0;
-static volatile uint8_t g_result_b = 0;
 
 static void led_set(Colour c) {
     g_pixel.setPixelColor(0, g_pixel.Color(c.r, c.g, c.b));
@@ -295,6 +295,7 @@ static inline void led_result(bool ok) { led_flash(ok ? COL_GREEN : COL_RED); }
 // Mode 0 = SCAN/UNLOCK  (both pins open)
 // Mode 1 = OMEGA LOCK   (GPIO0-GPIO1 bridged)
 enum DeviceMode { MODE_SCAN = 0, MODE_LOCK = 1 };
+static DeviceMode g_last_mode = MODE_SCAN;  // must follow DeviceMode definition
 
 static inline bool mode_pin_active(uint8_t pin) {
     return digitalRead(pin) == (MODE_PIN_ACTIVE_HIGH ? HIGH : LOW);
@@ -306,10 +307,10 @@ static DeviceMode mode_read() {
 }
 
 // ─── Bus control ─────────────────────────────────────────────
-static void bus_enable(uint16_t ms = BUS_ENABLE_MS) { digitalWrite(PIN_ENABLE, HIGH); safe_delay(ms); }
+static void bus_enable(uint16_t ms = BUS_SETTLE_ON_MS) { digitalWrite(PIN_ENABLE, HIGH); safe_delay(ms); }
 static void bus_disable()                            { digitalWrite(PIN_ENABLE, LOW);  }
 
-static void power_cycle_bus(uint16_t off_ms = POWERCYCLE_OFF_MS, uint16_t on_ms = POWERCYCLE_ON_MS) {
+static void power_cycle_bus(uint16_t off_ms = POWERCYCLE_OFF_MS, uint16_t on_ms = BUS_SETTLE_ON_MS) {
     bus_disable();
     g_charger_arm_issued = false;
     safe_delay(off_ms);
@@ -318,7 +319,7 @@ static void power_cycle_bus(uint16_t off_ms = POWERCYCLE_OFF_MS, uint16_t on_ms 
 
 static bool battery_present() {
     digitalWrite(PIN_ENABLE, HIGH);
-    safe_delay(BUS_PRESENCE_MS);
+    safe_delay(BUS_SETTLE_ON_MS);
     bool p = (g_ow.reset() == 1);
     digitalWrite(PIN_ENABLE, LOW);
     return p;
@@ -387,13 +388,6 @@ static inline uint16_t le16(const uint8_t *b) { return (uint16_t)b[0] | ((uint16
 // ─── Utility ─────────────────────────────────────────────────
 static void print_sep() { Serial.println(F("-------------------------------------------------")); }
 
-static void print_checksums(bool ok0, bool ok1, bool ok2) {
-    Serial.print(ok0 ? F("0-15=ok") : F("0-15=bad"));
-    Serial.print(' ');
-    Serial.print(ok1 ? F("16-31=ok") : F("16-31=bad"));
-    Serial.print(' ');
-    Serial.println(ok2 ? F("32-40=ok") : F("32-40=bad"));
-}
 
 static void print_failure_code(uint8_t fc) {
     switch (fc) {
@@ -436,7 +430,7 @@ static void print_frame(const uint8_t d[BASIC_INFO_LEN],
 static BusResult enter_testmode() {
     uint8_t r[1] = {0};
     BusResult res = cmd_cc(CMD_TESTMODE_ENTER, sizeof(CMD_TESTMODE_ENTER), r, 1);
-    if (res == BUS_OK) { g_in_testmode = true; safe_delay(TESTMODE_SETTLE_MS); }
+    if (res == BUS_OK) { g_in_testmode = true; safe_delay(INTER_CMD_MS); }
     return res;
 }
 static void exit_testmode() {
@@ -444,7 +438,7 @@ static void exit_testmode() {
     uint8_t r[1] = {0};
     cmd_cc(CMD_TESTMODE_EXIT, sizeof(CMD_TESTMODE_EXIT), r, 1);
     g_in_testmode = false;
-    safe_delay(TESTMODE_SETTLE_MS);
+    safe_delay(INTER_CMD_MS);
 }
 
 // ─── Basic info read ─────────────────────────────────────────
@@ -470,17 +464,15 @@ static bool read_rom_id(uint8_t rom_out[8]) {
 }
 
 // ─── Raw bus session helper ──────────────────────────────────
-static bool raw_cc_session(uint16_t powerup_ms, uint16_t reset_gap_us, uint16_t byte_gap_us,
-                           bool send_skip_rom,
+static bool raw_cc_session(uint16_t powerup_ms, bool send_skip_rom,
                            const uint8_t *cmd, uint8_t cmd_len,
                            uint8_t *rsp, uint8_t rsp_len) {
     digitalWrite(PIN_ENABLE, HIGH);
     if (powerup_ms) safe_delay(powerup_ms);
     if (!g_ow.reset()) { digitalWrite(PIN_ENABLE, LOW); return false; }
-    delayMicroseconds(reset_gap_us);
-    if (send_skip_rom) { g_ow.write(0xCC, 0); delayMicroseconds(byte_gap_us); }
-    for (uint8_t i = 0; i < cmd_len; i++) { g_ow.write(cmd[i], 0); delayMicroseconds(byte_gap_us); }
-    for (uint8_t i = 0; i < rsp_len; i++) { rsp[i] = g_ow.read();  delayMicroseconds(byte_gap_us); }
+    if (send_skip_rom) { g_ow.write(0xCC, 0); delayMicroseconds(BUS_BYTE_GAP_US); }
+    for (uint8_t i = 0; i < cmd_len; i++) { g_ow.write(cmd[i], 0); delayMicroseconds(BUS_BYTE_GAP_US); }
+    for (uint8_t i = 0; i < rsp_len; i++) { rsp[i] = g_ow.read();  delayMicroseconds(BUS_BYTE_GAP_US); }
     digitalWrite(PIN_ENABLE, LOW);
     return true;
 }
@@ -503,19 +495,32 @@ static bool read_model(char out[8]) {
 }
 
 static bool read_model_type5(char out[8]) {
-    uint8_t dummy[1] = {0};
-    bool ok = raw_cc_session(0, TYPE5_RESET_GAP_US, BUS_BYTE_GAP_US,
-                             /*skip_rom=*/true, &TYPE5_CMD_SESSION, 1, dummy, 0);
-    if (!ok) { snprintf(out, 8, "BL18xx"); return false; }
-    safe_delay(10);
+    // ENABLE must stay HIGH throughout — cutting power between the
+    // session enter and model read resets the battery's internal state.
 
-    uint8_t r[2] = {0};
-    ok = raw_cc_session(0, TYPE5_RESET_GAP_US, BUS_BYTE_GAP_US,
-                        /*skip_rom=*/false, &TYPE5_CMD_MODEL, 1, r, 2);
-    if (!ok) { snprintf(out, 8, "BL18xx"); return false; }
+    digitalWrite(PIN_ENABLE, HIGH);
+    safe_delay(BUS_SETTLE_ON_MS);
 
-    if ((r[0] != 0xFF || r[1] != 0xFF) && (r[0] != 0x00 || r[1] != 0x00)) {
-        snprintf(out, 8, "BL%02X%02X", r[1], r[0]);
+    // Session enter: CC 99
+    if (!g_ow.reset()) { digitalWrite(PIN_ENABLE, LOW); snprintf(out, 8, "BL18xx"); return false; }
+    g_ow.write(0xCC, 0);
+    delayMicroseconds(BUS_BYTE_GAP_US);
+    g_ow.write(0x99, 0);
+
+    safe_delay(INTER_CMD_MS);
+
+    // Model read: bare 0x31 — returns two bytes, high byte first
+    if (!g_ow.reset()) { digitalWrite(PIN_ENABLE, LOW); snprintf(out, 8, "BL18xx"); return false; }
+    g_ow.write(0x31, 0);
+    delayMicroseconds(BUS_BYTE_GAP_US);
+    uint8_t hi = g_ow.read();
+    delayMicroseconds(BUS_BYTE_GAP_US);
+    uint8_t lo = g_ow.read();
+
+    digitalWrite(PIN_ENABLE, LOW);
+
+    if ((hi != 0xFF || lo != 0xFF) && (hi != 0x00 || lo != 0x00)) {
+        snprintf(out, 8, "BL%02X%02X", lo, hi);
         return true;
     }
     snprintf(out, 8, "BL18xx");
@@ -752,37 +757,92 @@ static bool read_voltages_type023(VoltageReadResult &vr, uint8_t ncells) {
     return true;
 }
 
-static bool type5_raw_cc(const uint8_t *data, uint8_t dlen, uint8_t *rsp, uint8_t rlen) {
-    return raw_cc_session(TYPE5_POWERUP_MS, TYPE5_RESET_GAP_US, BUS_BYTE_GAP_US,
-                          /*skip_rom=*/true, data, dlen, rsp, rlen);
-}
+
+// ─── Type 5 voltage reads ────────────────────────────────────
+// Two-path approach for the two known Type 5 variants:
+//
+// Fast path: battery session is already warm from read_model_type5.
+//   CC 31 responds immediately — read all cells and return.
+//
+// Slow path: battery ADC needs multiple read cycles to settle.
+//   Re-enter session with CC 99, then poll until all cells valid.
 
 static bool read_voltages_type5(VoltageReadResult &vr, uint8_t ncells) {
     static const uint8_t CELL_CMDS[] = { 0x31, 0x32, 0x33, 0x34, 0x35 };
-    uint8_t ign[2] = {0};
-    if (!type5_raw_cc(CMD_CC_F0, sizeof(CMD_CC_F0), ign, 0)) return false;
-    type5_raw_cc(CMD_CC_F0, sizeof(CMD_CC_F0), ign, 0);
-    type5_raw_cc(&CELL_CMDS[0], 1, ign, 2);
-
+    static const uint8_t TC[]        = { TYPE5_CMD_TEMP };
     uint8_t n = min(ncells, (uint8_t)5);
-    float   pack = 0.0f;
-    uint8_t any  = 0;
-    uint8_t r[2];
-    for (uint8_t i = 0; i < n; i++) {
-        r[0] = r[1] = 0;
-        if (!type5_raw_cc(&CELL_CMDS[i], 1, r, 2)) continue;
-        uint16_t mv = le16(r);
-        if (mv > 0 && mv != 0xFFFF) { vr.cells.v[i] = mv / 1000.0f; pack += vr.cells.v[i]; any = 1; }
-    }
-    vr.cells.n = n; vr.cells.valid = any != 0; vr.vpack = pack;
 
-    r[0] = r[1] = 0;
-    if (type5_raw_cc(&TYPE5_CMD_TEMP, 1, r, 2)) {
-        uint16_t traw = le16(r);
-        if (traw > 0 && traw != 0xFFFF) vr.t_cell = traw / 100.0f;
+    // ── Fast path ────────────────────────────────────────────────
+    // Try CC 31 immediately. If cell 1 returns a valid voltage the
+    // session is warm and we can read all cells in one pass.
+    {
+        uint8_t r[2] = {0};
+        cmd_cc(&CELL_CMDS[0], 1, r, 2);  // managed — enables bus with 150ms settle
+        uint16_t mv = le16(r);
+        if (mv >= 2500 && mv <= 4500) {
+            float pack = mv/1000.0f;
+            vr.cells.v[0] = mv/1000.0f;
+            bus_enable();  // bus was disabled by cmd_cc — re-enable for raw reads
+            for (uint8_t i = 1; i < n; i++) {
+                r[0] = r[1] = 0;
+                cmd_cc_raw(&CELL_CMDS[i], 1, r, 2);
+                mv = le16(r);
+                if (mv >= 500 && mv <= 4800) { vr.cells.v[i] = mv/1000.0f; pack += vr.cells.v[i]; }
+            }
+            r[0] = r[1] = 0; cmd_cc_raw(TC, 1, r, 2);
+            uint16_t traw = le16(r);
+            if (traw > 0 && traw != 0xFFFF) vr.t_cell = traw/100.0f;
+            bus_disable();
+            vr.cells.n = n; vr.cells.valid = true; vr.vpack = pack; vr.ok = true;
+            return true;
+        }
     }
-    vr.ok = vr.cells.valid;
-    return vr.ok;
+
+    // ── Slow path ────────────────────────────────────────────────
+    // Cell 1 returned 0 — re-enter session and poll until the ADC
+    // has valid data for all cells.
+    uint8_t prime[2] = {0};
+    raw_cc_session(0, true,  &TYPE5_CMD_SESSION, 1, prime, 0);
+    safe_delay(INTER_CMD_MS);
+    raw_cc_session(0, false, &TYPE5_CMD_MODEL,   1, prime, 2);
+
+    float best_v[5] = {0}; uint8_t best_any = 0;
+    float best_pack = 0, best_temp = TEMP_INVALID;
+
+    for (uint8_t attempt = 0; attempt < TYPE5_MAX_ATTEMPTS; attempt++) {
+        wdt_kick();
+        float v[5] = {0}; uint8_t got = 0; float pack = 0;
+        // First cell uses managed cmd_cc (150ms settle after bus was off)
+        {
+            uint8_t r[2] = {0};
+            cmd_cc(&CELL_CMDS[0], 1, r, 2);
+            uint16_t mv = le16(r);
+            if (mv >= 500 && mv <= 4800) { v[0] = mv/1000.0f; pack += v[0]; got++; }
+        }
+        // Remaining cells use raw — bus already enabled by first read
+        bus_enable();
+        for (uint8_t i = 1; i < n; i++) {
+            uint8_t r[2] = {0};
+            cmd_cc_raw(&CELL_CMDS[i], 1, r, 2);
+            uint16_t mv = le16(r);
+            if (mv >= 500 && mv <= 4800) { v[i] = mv/1000.0f; pack += v[i]; got++; }
+        }
+        uint8_t tr[2] = {0}; cmd_cc_raw(TC, 1, tr, 2);
+        bus_disable();
+        uint16_t traw = le16(tr);
+        float t = (traw > 0 && traw != 0xFFFF) ? traw/100.0f : TEMP_INVALID;
+        if (got >= best_any) {
+            best_any = got; best_pack = pack; best_temp = t;
+            for (uint8_t i = 0; i < n; i++) best_v[i] = v[i];
+        }
+        if (got == n) break;
+    }
+
+    if (best_any == 0) return false;
+    for (uint8_t i = 0; i < n; i++) vr.cells.v[i] = best_v[i];
+    vr.cells.n = n; vr.cells.valid = true; vr.vpack = best_pack;
+    vr.t_cell = best_temp; vr.ok = true;
+    return true;
 }
 
 static bool read_voltages_type6(VoltageReadResult &vr, uint8_t ncells) {
@@ -925,7 +985,7 @@ static bool charger_write_frame(const uint8_t src[BASIC_INFO_LEN]) {
             Serial.println(F("  Arm: no presence.")); return false;
         }
         g_charger_arm_issued = true;
-        safe_delay(WRITE_ARM_DELAY_MS);
+        safe_delay(INTER_CMD_MS);
     }
     {
         uint8_t payload[2+BASIC_INFO_LEN];
@@ -934,13 +994,13 @@ static bool charger_write_frame(const uint8_t src[BASIC_INFO_LEN]) {
         if (cmd_33_no_rom(payload,sizeof(payload))!=BUS_OK) {
             Serial.println(F("  Write: no presence.")); return false;
         }
-        safe_delay(WRITE_FRAME_DELAY_MS);
+        safe_delay(INTER_CMD_MS);
     }
     {
         if (cmd_33_no_rom(CMD_STORE,sizeof(CMD_STORE))!=BUS_OK) {
             Serial.println(F("  Store: no presence.")); return false;
         }
-        safe_delay(WRITE_STORE_DELAY_MS);
+        safe_delay(INTER_CMD_MS);
     }
     return true;
 }
@@ -963,16 +1023,6 @@ static bool do_protected_write(const uint8_t frame[BASIC_INFO_LEN],
 }
 
 // Send DA04 error register clear. Call after a successful frame write.
-static void send_da04() {
-    power_cycle_bus();
-    if (enter_testmode() == BUS_OK) {
-        uint8_t rom[8]={0}, r[9]={0};
-        cmd_33_with_rom(CMD_RESET_ERRORS, sizeof(CMD_RESET_ERRORS), rom, r, 9);
-        exit_testmode();
-    }
-    power_cycle_bus();
-}
-
 // Frame repair — sets nybble 34 = 0 and recalculates checksums.
 // Confirmed by testing: only nybble 34, CS0, and CS2 are charger-validated.
 // All other frame data is left untouched.
@@ -998,17 +1048,17 @@ static bool repair_frame(uint8_t data32[BASIC_INFO_LEN]) {
     }
 
     bool ok0 = (checksum_calc(verify,  0, 15) == nybble_get(verify, 41));
-    bool ok1 = (checksum_calc(verify, 16, 31) == nybble_get(verify, 42));
     bool ok2 = (checksum_calc(verify, 32, 40) == nybble_get(verify, 43));
-    Serial.print(F("  Checksums : ")); print_checksums(ok0, ok1, ok2);
+    uint8_t n34 = nybble_get(verify, 34);
+    char buf[48];
+    snprintf(buf, sizeof(buf), "  Lock check : CS0=%s  CS2=%s  N34=%s (%u)",
+        ok0 ? "OK" : "BAD",
+        ok2 ? "OK" : "BAD",
+        n34 == 0 ? "OK" : "BAD", (unsigned)n34);
+    Serial.println(buf);
 
-    if (ok0 && ok2 && nybble_get(verify, 34) == 0) {
-        // Send DA04 to clear internal error register so battery charges on first insert
-        Serial.println(F("  DA04 clear..."));
-        send_da04();
-        uint8_t after_da04[BASIC_INFO_LEN] = {0};
-        poll_until_response(after_da04);
-        memcpy(data32, after_da04, BASIC_INFO_LEN);
+    if (ok0 && ok2 && n34 == 0) {
+        memcpy(data32, verify, BASIC_INFO_LEN);
         return true;
     }
 
@@ -1093,49 +1143,49 @@ static void step_handle_lock(BatteryInfo &info, uint8_t d[BASIC_INFO_LEN]) {
 
     bool unlocked = false;
 
-    // Step 1 — DA04: clears internal error register.
-    // Handles naturally locked batteries (overdischarge, overload) on all types.
-    // Type 2 batteries self-repair entirely via DA04.
-    Serial.println(F("--- Step 1: DA04 reset"));
-    led_yellow();
-    power_cycle_bus();
-    if (enter_testmode() == BUS_OK) {
-        uint8_t rom[8]={0}, r[9]={0};
-        cmd_33_with_rom(CMD_RESET_ERRORS, sizeof(CMD_RESET_ERRORS), rom, r, 9);
-        exit_testmode();
-        power_cycle_bus();
-        uint8_t verify[BASIC_INFO_LEN] = {0};
-        if (poll_until_response(verify)) {
-            memcpy(d, verify, BASIC_INFO_LEN);
+    for (uint8_t attempt = 1; attempt <= UNLOCK_MAX_CYCLES && !unlocked; attempt++) {
+        wdt_kick();
+
+        if (attempt == 1) {
+            // Attempt 1: DA04 error register clear.
+            // Handles naturally locked batteries (overdischarge, overload).
+            // Type 2 batteries self-repair entirely via DA04.
+            Serial.println(F("--- Attempt 1: DA04 reset"));
+            led_yellow();
+            power_cycle_bus();
+            if (enter_testmode() == BUS_OK) {
+                uint8_t rom[8]={0}, r[9]={0};
+                cmd_33_with_rom(CMD_RESET_ERRORS, sizeof(CMD_RESET_ERRORS), rom, r, 9);
+                exit_testmode();
+                power_cycle_bus();
+                uint8_t verify[BASIC_INFO_LEN] = {0};
+                if (poll_until_response(verify)) {
+                    memcpy(d, verify, BASIC_INFO_LEN);
+                    refresh_info_from_frame(d, info);
+                    if (!info.locked) {
+                        Serial.println(F("  -> UNLOCKED by DA04."));
+                        unlocked = true;
+                        continue;
+                    }
+                    Serial.println(F("  -> Still locked. Trying frame repair."));
+                }
+            }
+            // Fall through to frame repair on same attempt
+        }
+
+        // Attempt 1 fallthrough + attempts 2-6: frame repair
+        Serial.print(F("--- Attempt ")); Serial.print(attempt); Serial.println(F(": Frame repair"));
+        led_purple();
+        if (repair_frame(d)) {
             refresh_info_from_frame(d, info);
             if (!info.locked) {
-                Serial.println(F("  -> UNLOCKED by DA04."));
+                Serial.println(F("  -> UNLOCKED."));
                 unlocked = true;
             } else {
-                Serial.println(F("  -> Still locked. Proceeding to frame repair."));
+                Serial.println(F("  -> Still locked. Retrying."));
             }
-        }
-    }
-
-    // Step 2 — Comprehensive frame repair.
-    // Fixes all known corrupt fields: lock nybble, checksums, failure code,
-    // variant bytes, status code, constants. Followed by DA04 internally.
-    if (!unlocked) {
-        for (uint8_t attempt = 1; attempt <= UNLOCK_MAX_CYCLES && !unlocked; attempt++) {
-            Serial.print(F("--- Step 2: Frame repair (attempt ")); Serial.print(attempt); Serial.println(F(")"));
-            led_purple();
-            wdt_kick();
-            if (repair_frame(d)) {
-                refresh_info_from_frame(d, info);
-                if (!info.locked) {
-                    Serial.println(F("  -> Frame repair succeeded. UNLOCKED."));
-                    unlocked = true;
-                } else {
-                    Serial.println(F("  -> Repaired but still locked. Retrying."));
-                }
-            } else {
-                Serial.println(F("  -> Frame repair failed."));
-            }
+        } else {
+            Serial.println(F("  -> Frame repair failed."));
         }
     }
 
@@ -1286,7 +1336,6 @@ static bool run_scan() {
     return true;
 }
 
-// ─── Core 1 — LED animation ───────────────────────────────────
 // Core 1 handles the breathing pulse independently of Core 0's
 // battery operations. Volatile flags are the only shared state.
 void setup1() { /* nothing needed */ }
@@ -1311,13 +1360,6 @@ void loop1() {
 // ─── Hot-swap state machine ───────────────────────────────────
 enum ScanState { WAIT_BATTERY, SCAN_PENDING, IDLE, UNSUPPORTED };
 static ScanState  g_state         = WAIT_BATTERY;
-static uint32_t   g_last_poll     = 0;
-static DeviceMode g_last_mode     = MODE_SCAN;
-
-static constexpr uint16_t MODE_DEBOUNCE_MS    = 50;
-static constexpr uint8_t  MODE_DEBOUNCE_COUNT = 4;
-static uint8_t   g_mode_debounce  = 0;
-static uint32_t  g_last_mode_poll = 0;
 
 // ─── Arduino entry points ─────────────────────────────────────
 void setup() {
