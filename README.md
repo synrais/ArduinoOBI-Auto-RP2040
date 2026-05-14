@@ -18,7 +18,7 @@ Insert any Makita 18v or 36v LXT Li-Ion pack and within 2 seconds you get a full
 - 💡 **Status LED** — RP2040 Zero onboard NeoPixel LED shows device state at a glance
 - 🛠️ **Auto-unlock** — performs a charger-style unlock sequence automatically on locked packs
 - 🔧 **Frame repair** — comprehensively repairs corrupt frame fields whilst preserving all salvageable data
-- 🔐 **Omega lock** — sets the original Makita charger lock (nybble 34) if GPIO0→GPIO1 bridged — Recoverable
+- 🔐 **Omega lock** — sets the original Makita charger lock (nybble 34) if GPIO2→GPIO3 bridged — Recoverable
   
 No configuration. No button presses. Just insert the battery and it runs. Remove it and the device waits for the next one.
 
@@ -49,7 +49,7 @@ Lift the PCB at each tab to verify it is firmly connected, if not repair with so
 | 🔴 Red      | Unlock failed or BMS dead                                      |
 | 🟠 Orange   | **Blink**, Major cell imbalance or broken balancer tab         |
 
-## Lock Mode (GPIO0→GPIO1 = Omega Lock) - Recoverable
+## Lock Mode (GPI20→GPIO3 = Omega Lock) - Recoverable
 | Colour      | Meaning                                                        |
 |-------------|----------------------------------------------------------------|
 | 🔴 Red      | **Pulse**, No battery / idle                                   |
@@ -155,7 +155,7 @@ In practice almost all batteries unlock on the first attempt. If all attempts ar
 
 ## Lock Mode
 
-Bridging GPIO0 → GPIO1 switches the device into **Omega Lock mode** (idle LED pulses red). This mode sets the original Makita charger lock nybble — nybble 34 — to a non-zero value. The charger checks this nybble before allowing charging to begin, a mechanism present in every Makita LXT battery from the earliest protocol through to current production.
+Bridging GPIO2 → GPIO3 switches the device into **Omega Lock mode** (idle LED pulses red). This mode sets the original Makita charger lock nybble — nybble 34 — to a non-zero value. The charger checks this nybble before allowing charging to begin, a mechanism present in every Makita LXT battery from the earliest protocol through to current production.
 
 The frame remains internally consistent — all checksums are valid, nybble 34 is the only thing non-zero. The battery will report UNLOCKED to any software that only checks checksums and failure codes, but the charger rejects it immediately. DA04 alone cannot undo this lock on newer batteries — the omega lock must be reversed by zeroing nybble 34 and recalculating checksums, which the scan/unlock mode does automatically.
 
@@ -194,7 +194,7 @@ This is the standard 1-Wire pull-up value — lower values overdrive the bus and
 **Pull-up voltage depends on your board:**
 
 - **Arduino Uno / Nano** — pull up to **5v**. The ATmega328P runs at 5v and its logic HIGH threshold (~3.0v) leaves almost no margin when pulling up to 3.3v, causing unreliable reads. The battery's BMS data pin can tolerate 5v in practice.
-- **ESP32-C3 / RP2040 Zero** — pull up 4.7 kΩ to **3.3v only**. These are 3.3v-native devices and 5v on a GPIO will damage them. Also as precaution connect the Bus enable and 1-Wire of your battery to your chip via 120 Ω resistors to mitigate risk of a pin getting stuck high or low or blowing (It helps alot!). Make sure they are directly connected to the gpio pins and your battery Bus enable and 1-Wire pins!
+- **ESP32-C3 / RP2040 Zero** — pull up 4.7 kΩ to **3.3v only**. These are 3.3v-native devices and 5v on a GPIO will damage them. Also as precaution connect the Bus enable and 1-Wire of your battery to your chip via 120 Ω resistors to mitigate risk of a pin getting stuck high or low or blowing (It helps alot!). Make sure they are directly connected to the GPIO pins and your battery Bus enable and 1-Wire pins!
 
 > **Optional** — A 1 kΩ load resistor may be required across the battery's main power terminals (B+ to B−), as some batteries enter a deep sleep state and will not respond on the 1-Wire bus until they detect current draw on the power terminals. Plugging into a Makita charger or 2 pin device will also wake a battery from this state.
 
