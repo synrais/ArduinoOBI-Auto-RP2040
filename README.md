@@ -86,7 +86,7 @@ All three can trigger a scan, and colourise the output (lock state, health, erro
 
 > **Type 5 (F0513)** — unlock/lock is not supported. The F0513 flash write sequence carries a high risk of permanently bricking the pack. Type 5 batteries are read-only.
 
-> **Extended Stats** — Type 0 batteries expose a full SRAM stats block via the D7 command, providing SOC %, remaining charge, live current draw, learned and best capacity, cell and mosfet temperatures, error status, error counters, and SOC recalibration timing.
+> **Extended Stats** — Type 0 batteries expose a full SRAM stats block via the D7 command, providing SOC %, remaining charge, live current draw, learned and target capacity, cell and mosfet temperatures, error status, error counters, and SOC recalibration timing.
 
 ---
 
