@@ -86,7 +86,7 @@ All three can trigger a scan, and colourise the output (lock state, health, erro
 
 > **Type 5 (F0513)** — unlock/lock is not supported. The F0513 flash write sequence carries a high risk of permanently bricking the pack. Type 5 batteries are read-only.
 
-> **Extended Stats** — Type 0 batteries expose a full SRAM stats block via the D7 command, providing SOC %, remaining charge, live current draw, learned and target capacity, cell and mosfet temperatures, error status, error counters, and SOC recalibration timing.
+> **Extended Stats** — Type 0 batteries expose a full SRAM stats block via the D7 command, providing SOC %, remaining charge, live current draw, real and target capacity, cell and mosfet temperatures, error status, error counters, and SOC recalibration timing.
 
 ---
 
@@ -126,7 +126,7 @@ A large cell voltage spread almost always indicates a **broken balancing tab** �
 | 4    | Fault (sub-cause not yet mapped) |
 | 5    | Warning                          |
 | 7    | NTC temp diff >50°C, EEPROM error, cell overvoltage at 4.22V, or cell imbalance >300mV at idle |
-| 15   | Learned capacity under 70% of Rated capacity"|
+| 15   | Real capacity under 70% of Target capacity"|
 
 ### ⚡ Cell Imbalance
 
