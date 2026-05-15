@@ -134,7 +134,7 @@ The `Cell diff` value is the spread between your highest and lowest cell voltage
 
 ### 🔌 State of Charge (Type 0)
 
-Type 0 batteries report a live SOC % directly from the BMS, along with remaining charge in Ah calculated from the battery's own learned capacity reference. This is a precision fuel gauge — not a coarse estimate.
+Type 0 batteries report a live SOC % directly from the BMS, along with remaining charge in Ah calculated from the battery's own target capacity reference. This is a precision fuel gauge — not a coarse estimate.
 
 ---
 
