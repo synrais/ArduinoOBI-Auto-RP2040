@@ -140,7 +140,7 @@ enum FailureCode : uint8_t {
     FC_UNKNOWN4   = 4,
     FC_WARNING    = 5,
     FC_NTC_IMBAL  = 7,
-    FC_DEAD       = 15,
+    FC_UNDERCAP   = 15,
 };
 
 enum class BatteryType : int8_t {
@@ -412,7 +412,7 @@ static void print_failure_code(uint8_t fc, const uint8_t d[BASIC_INFO_LEN]) {
             else if (d[11] >= 3)    Serial.println(F("Cell imbalance >300mV at idle"));
             else                    Serial.println(F("Fault (sub-cause unclear)"));
             break;
-        case FC_DEAD:       Serial.println(F("BAD (15) — Real cap under 70% of rated")); break;
+        case FC_UNDERCAP:       Serial.println(F("BAD (15) — Real cap under 70% of rated")); break;
         default: Serial.print(F("BAD — Unknown (")); Serial.print(fc); Serial.println(')'); break;
     }
 }
